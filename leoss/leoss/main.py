@@ -1,8 +1,8 @@
 import math
 
-R2D = 180/math.pi
-D2R = math.pi/180
-ZERO = 1e-12
+R2D     = 180/math.pi
+D2R     = math.pi/180
+ZERO    = 1e-12
 
 class Vector:
     __slots__ = ("x", "y", "z")
@@ -156,5 +156,3 @@ class Vector:
 
     magnitude = mag
     __str__ = __repr__
-
-
