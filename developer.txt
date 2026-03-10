@@ -12,6 +12,11 @@ or
 #### to exit virtual environment
 deactivate
 
+#### run pytest scripts
+poetry run pytest -v (shows name of each test)
+poetry run pytest -vs (shows name and print statements)
+poetry run pytest -v -k 'test_XX' (run a specific function)
+
 #### create new poetry project
 poetry new 'projectname'
 
