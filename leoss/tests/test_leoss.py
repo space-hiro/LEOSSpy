@@ -734,3 +734,116 @@ def test_VECTOR_APPLY_QUATERNION_TYPE_ERROR():
     with pytest.raises(TypeError):
         v.applyQuaternion(1)
 
+def test_STATE_CONSTRUCTOR_DEFAULT():
+    s = State()
+
+    assert s.m == 0.0
+    assert s.p == Vector(0,0,0)
+    assert s.v == Vector(0,0,0)
+    assert s.q == Quaternion(1,0,0,0)
+    assert s.w == Vector(0,0,0)
+
+def test_STATE_CONSTRUCTOR_COPIES():
+    p = Vector(1,2,3)
+
+    s = State(position=p)
+
+    p.set(0,0,0)
+
+    assert s.p == Vector(1,2,3)
+
+def test_STATE_INDEXING():
+    s = State(1, Vector(1,2,3), Vector(4,5,6), Quaternion(1,0,0,0), Vector(7,8,9))
+
+    assert s[0] == 1
+    assert s[1] == Vector(1,2,3)
+    assert s[2] == Vector(4,5,6)
+    assert s[3] == Quaternion(1,0,0,0)
+    assert s[4] == Vector(7,8,9)
+
+    assert len(s) == 5
+
+    with pytest.raises(IndexError):
+        s[5]
+
+def test_STATE_COPY():
+    a = State(1, Vector(1,2,3), Vector(4,5,6), Quaternion(1,0,0,0), Vector(7,8,9))
+    b = State()
+
+    b.copy(a)
+
+    assert b == a
+
+def test_STATE_COPY_DEEP():
+    a = State(1, Vector(1,2,3), Vector(4,5,6), Quaternion(1,0,0,0), Vector(7,8,9))
+    b = State().copy(a)
+
+    a.p.set(0,0,0)
+
+    assert b.p == Vector(1,2,3)
+
+def test_STATE_ADD():
+    a = State(1, Vector(1,2,3), Vector(4,5,6), Quaternion(1,1,1,1), Vector(7,8,9))
+    b = State(1, Vector(1,1,1), Vector(1,1,1), Quaternion(1,1,1,1), Vector(1,1,1))
+
+    a.add(b)
+
+    assert a.m == 2
+    assert a.p == Vector(2,3,4)
+
+def test_STATE_SUB():
+    a = State(2, Vector(2,3,4), Vector(5,6,7), Quaternion(2,2,2,2), Vector(8,9,10))
+    b = State(1, Vector(1,1,1), Vector(1,1,1), Quaternion(1,1,1,1), Vector(1,1,1))
+
+    a.sub(b)
+
+    assert a.m == 1
+    assert a.p == Vector(1,2,3)
+
+def test_STATE_SCALE():
+    s = State(1, Vector(1,2,3), Vector(4,5,6), Quaternion(1,2,3,4), Vector(7,8,9))
+
+    s.scale(2)
+
+    assert s.m == 2
+    assert s.p == Vector(2,4,6)
+
+def test_STATE_TYPE_ERRORS():
+    s = State()
+
+    with pytest.raises(TypeError):
+        s.add(1)
+
+    with pytest.raises(TypeError):
+        s.sub(1)
+
+    with pytest.raises(TypeError):
+        s.scale("x")
+
+    with pytest.raises(TypeError):
+        s.add_scaled(s, s)
+
+    with pytest.raises(TypeError):
+        s.add_scaled(1, 1)
+
+def test_STATE_ADD_SCALED():
+    a = State(
+        1.0,
+        Vector(1,2,3),
+        Vector(4,5,6),
+        Quaternion(1,2,3,4),
+        Vector(7,8,9)
+    )
+
+    b = State(
+        1.0,
+        Vector(1,1,1),
+        Vector(1,1,1),
+        Quaternion(1,1,1,1),
+        Vector(1,1,1)
+    )
+
+    a.add_scaled(b, 2)
+
+    assert a.m == 3.0
+    assert a.p == Vector(3,4,5)

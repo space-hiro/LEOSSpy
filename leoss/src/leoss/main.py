@@ -568,3 +568,144 @@ class Quaternion:
 
     magnitude = mag
     __str__ = __repr__
+
+class State:
+    __slots__ = ("m","p","v","q","w")
+    
+    def __init__(self, mass=0.0, position=None, velocity=None, quaternion=None, bodyrate=None):
+        self.m = float(mass)
+        if position is None: self.p = Vector()
+        else:
+            if not isinstance(position, Vector):
+                raise TypeError("position must be a Vector")
+            self.p = Vector(position.x, position.y, position.z)
+        if velocity is None: self.v = Vector()
+        else:
+            if not isinstance(velocity, Vector):
+                raise TypeError("velocity must be a Vector")
+            self.v = Vector(velocity.x, velocity.y, velocity.z)
+        if quaternion is None: self.q = Quaternion(1.0, 0.0, 0.0, 0.0)
+        else:
+            if not isinstance(quaternion, Quaternion):
+                raise TypeError("quaternion must be a Quaternion")
+            self.q = Quaternion(quaternion.w, quaternion.x, quaternion.y, quaternion.z)
+        if bodyrate is None: self.w = Vector()
+        else:
+            if not isinstance(bodyrate, Vector):
+                raise TypeError("bodyrate must be a Vector")
+            self.w = Vector(bodyrate.x, bodyrate.y, bodyrate.z)
+
+    def __repr__(self):
+        out = str(self.m)
+        for i in range(1,len(self),1):
+            out = out + ", " + str(self[i])
+        return f'State({out})'
+    def __getitem__(self, item):
+        if item == 0 : return self.m
+        if item == 1 : return self.p
+        if item == 2 : return self.v
+        if item == 3 : return self.q
+        if item == 4 : return self.w
+        raise IndexError("There are only five elements in the State")
+    def __len__(self): return 5
+    def __iter__(self):
+        yield self.m
+        yield self.p
+        yield self.v
+        yield self.q
+        yield self.w
+    def __eq__(self, other):
+        if not isinstance(other, State):
+            return NotImplemented
+        return (
+            self.m == other.m and
+            self.p == other.p and
+            self.v == other.v and
+            self.q == other.q and
+            self.w == other.w
+        )
+
+    def copy(self, other):
+        if not isinstance(other, State):
+            raise TypeError("Operand must be a State")
+        self.m = other.m
+        self.p.copy(other.p)
+        self.v.copy(other.v)
+        self.q.copy(other.q)
+        self.w.copy(other.w)
+        return self
+    def zero(self):
+        '''
+        set all elements of state to zero
+        '''
+        self.m = 0.0
+        self.p.set(0.0, 0.0, 0.0)
+        self.v.set(0.0, 0.0, 0.0)
+        self.q.set(0.0, 0.0, 0.0, 0.0)
+        self.w.set(0.0, 0.0, 0.0)
+        return self
+    def add(self, other):
+        '''
+        adds two states
+        overwrites existing state with result
+        '''
+        if not isinstance(other, State):
+            raise TypeError("Operand must be a State")
+        self.m += other.m
+        self.p.add(other.p)
+        self.v.add(other.v)
+        self.q.add(other.q)
+        self.w.add(other.w)
+        return self
+    def sub(self, other):
+        '''
+        subtracts two states
+        overwrites existing state with result
+        '''
+        if not isinstance(other, State):
+            raise TypeError("Operand must be a State")
+        self.m -= other.m
+        self.p.sub(other.p)
+        self.v.sub(other.v)
+        self.q.sub(other.q)
+        self.w.sub(other.w)
+        return self
+    def add_scaled(self, other, s):
+        if not isinstance(other, State):
+            raise TypeError("Operand must be a State")
+        if not isinstance(s, (int, float)):
+            raise TypeError("Operand must be a scalar")
+
+        self.m   += other.m * s
+        self.p.x += other.p.x * s
+        self.p.y += other.p.y * s
+        self.p.z += other.p.z * s
+
+        self.v.x += other.v.x * s
+        self.v.y += other.v.y * s
+        self.v.z += other.v.z * s
+
+        self.q.w += other.q.w * s
+        self.q.x += other.q.x * s
+        self.q.y += other.q.y * s
+        self.q.z += other.q.z * s
+
+        self.w.x += other.w.x * s
+        self.w.y += other.w.y * s
+        self.w.z += other.w.z * s
+        return self
+    def scale(self, other):
+        '''
+        multiply elements with scalar
+        overwrites existing state with result
+        '''
+        if not isinstance(other, (int, float)):
+            raise TypeError("Operand must be a scalar")
+        self.m *= other
+        self.p.scale(other)
+        self.v.scale(other)
+        self.q.scale(other)
+        self.w.scale(other)
+        return self
+
+    __str__ = __repr__
