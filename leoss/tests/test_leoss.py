@@ -717,3 +717,20 @@ def test_QUATERNION_ROTATE_TYPE_ERROR():
 
     with pytest.raises(TypeError):
         q.rotate(1)
+
+def test_VECTOR_APPLY_QUATERNION():
+    q = Quaternion().setFromAxisAngle(Vector(0, 0, 1), math.pi / 2)
+    v = Vector(1, 0, 0)
+
+    v.applyQuaternion(q)
+
+    assert v.x == pytest.approx(0.0, abs=1e-12)
+    assert v.y == pytest.approx(1.0, abs=1e-12)
+    assert v.z == pytest.approx(0.0, abs=1e-12)
+
+def test_VECTOR_APPLY_QUATERNION_TYPE_ERROR():
+    v = Vector(1, 0, 0)
+
+    with pytest.raises(TypeError):
+        v.applyQuaternion(1)
+

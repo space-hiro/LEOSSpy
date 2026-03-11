@@ -144,6 +144,7 @@ class Vector:
             self.z*other.x - self.x*other.z,
             self.x*other.y - self.y*other.x
         )
+    
     def crossVectors(self, vec1, vec2):
         '''
         cross product two vectors
@@ -154,6 +155,28 @@ class Vector:
         self.x = vec1.y*vec2.z - vec1.z*vec2.y
         self.y = vec1.z*vec2.x - vec1.x*vec2.z
         self.z = vec1.x*vec2.y - vec1.y*vec2.x
+        return self
+    def applyQuaternion(self, q):
+        '''
+        applies the given quaternion rotation to this vector
+        overwrites existing vector with result
+        '''
+        if not isinstance(q, Quaternion) or q.mag2() - 1 > ZERO:
+            raise TypeError("Operand must a unit Quaternion")
+        
+        vx = self.x
+        vy = self.y
+        vz = self.z
+
+        # t = 2 * (qv x v)
+        tx = 2.0 * (q.y * vz - q.z * vy)
+        ty = 2.0 * (q.z * vx - q.x * vz)
+        tz = 2.0 * (q.x * vy - q.y * vx)
+
+        # v' = v + qw * t + (qv x t)
+        self.x = vx + q.w * tx + (q.y * tz - q.z * ty)
+        self.y = vy + q.w * ty + (q.z * tx - q.x * tz)
+        self.z = vz + q.w * tz + (q.x * ty - q.y * tx)
         return self
 
     def mag2(self): return self.x*self.x + self.y*self.y + self.z*self.z
@@ -480,7 +503,17 @@ class Quaternion:
         self.y /= mag
         self.z /= mag
         return self
-    
+    def negate(self):
+        '''
+        negates current quaternion
+        overwrites existing vector with result
+        '''
+        self.w *= -1
+        self.x *= -1
+        self.y *= -1
+        self.z *= -1
+        return self
+
     def mag2(self): return self.w*self.w + self.x*self.x + self.y*self.y + self.z*self.z
     def mag(self): return math.sqrt(self.mag2())
 
