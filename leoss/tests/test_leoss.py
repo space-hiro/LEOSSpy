@@ -3,7 +3,7 @@ import pytest
 
 def test_VECTOR_REPR_STR():
     v = Vector(1,2,3)
-    assert str(v) == "Vector(1, 2, 3)"
+    assert str(v) == "Vector(1.0, 2.0, 3.0)"
 
 def test_VECTOR_GETITEM():
     v = Vector(1,2,3)
@@ -232,6 +232,13 @@ def test_VECTOR_CROSS_BASIS_RIGHT_HAND_RULE():
     assert tmp.copy(Y).cross(Z) == X
     assert tmp.copy(Z).cross(X) == Y
 
+    tmp.crossVectors(X, Y)
+    assert tmp == Z
+    tmp.crossVectors(Y, Z)
+    assert tmp == X
+    tmp.crossVectors(Z, X)
+    assert tmp == Y
+
 def test_VECTOR_CROSS_BASIS_ANTI_COMMUTATIVE():
     X = Vector(1,0,0)
     Y = Vector(0,1,0)
@@ -242,11 +249,21 @@ def test_VECTOR_CROSS_BASIS_ANTI_COMMUTATIVE():
     assert tmp.copy(Z).cross(Y) == -X
     assert tmp.copy(X).cross(Z) == -Y
 
+    tmp.crossVectors(Y, X)
+    assert tmp == -Z
+    tmp.crossVectors(Z, Y)
+    assert tmp == -X
+    tmp.crossVectors(X, Z)
+    assert tmp == -Y
+
 def test_VECTOR_CROSS_SELF_ZERO():
     X = Vector(1,0,0)
     tmp = Vector()
 
     assert tmp.copy(X).cross(X) == Vector(0,0,0)
+
+    tmp.crossVectors(X,X)
+    assert tmp == Vector(0,0,0)
 
 def test_VECTOR_CROSS_GENERAL():
     a = Vector(1,2,3)
@@ -256,6 +273,9 @@ def test_VECTOR_CROSS_GENERAL():
     c = tmp.copy(a).cross(b)
 
     assert c == Vector(-3,6,-3)
+
+    tmp.crossVectors(a,b)
+    assert tmp == c
 
 def test_VECTOR_CROSS_ORTHOGONALITY():
     a = Vector(1,2,3)
@@ -267,6 +287,10 @@ def test_VECTOR_CROSS_ORTHOGONALITY():
     assert c.dot(a) == pytest.approx(0.0)
     assert c.dot(b) == pytest.approx(0.0)
 
+    tmp.crossVectors(a,b)
+    assert tmp.dot(a) == pytest.approx(0.0)
+    assert tmp.dot(b) == pytest.approx(0.0)
+
 def test_VECTOR_CROSS_DOES_NOT_MUTATE_OTHER():
     a = Vector(1,2,3)
     b = Vector(4,5,6)
@@ -274,6 +298,10 @@ def test_VECTOR_CROSS_DOES_NOT_MUTATE_OTHER():
 
     _ = tmp.copy(a).cross(b)
 
+    assert b == Vector(4,5,6)
+
+    tmp.crossVectors(a, b)
+    assert a == Vector(1,2,3)
     assert b == Vector(4,5,6)
 
 def test_MATRIX_CONSTRUCTOR():
@@ -460,3 +488,232 @@ def test_MATRIX_SINGULAR():
 
     with pytest.raises(ZeroDivisionError):
         M.inverse()
+
+def test_QUATERNION_REPR_STR():
+    q = Quaternion(1, 2, 3, 4)
+    assert str(q) == "Quaternion(1.0, 2.0, 3.0, 4.0)"
+
+def test_QUATERNION_GETITEM():
+    q = Quaternion(1, 2, 3, 4)
+
+    assert q[0] == 1
+    assert q[1] == 2
+    assert q[2] == 3
+    assert q[3] == 4
+
+    with pytest.raises(IndexError):
+        q[4]
+
+def test_QUATERNION_EQUALITY():
+    a = Quaternion(1, 2, 3, 4)
+    b = Quaternion(1, 2, 3, 4)
+    c = Quaternion(4, 3, 2, 1)
+
+    assert a == b
+    assert a != c
+    assert a.__eq__(1) is NotImplemented
+
+def test_QUATERNION_LEN_ITER():
+    q = Quaternion(1, 2, 3, 4)
+
+    assert len(q) == 4
+    assert list(q) == [1, 2, 3, 4]
+
+def test_QUATERNION_MAGNITUDE():
+    q = Quaternion(1, 2, 3, 4)
+
+    assert q.mag2() == 30
+    assert q.mag() == q.magnitude() == math.sqrt(30)
+
+def test_QUATERNION_NORMALIZE_ZERO():
+    q = Quaternion(0, 0, 0, 0)
+
+    with pytest.raises(ZeroDivisionError, match="zero quaternion"):
+        q.normalize()
+
+def test_QUATERNION_NORMALIZE():
+    q = Quaternion(1, 2, 3, 4)
+    q.normalize()
+
+    assert q.mag() == pytest.approx(1.0)
+
+def test_QUATERNION_COPY_SET():
+    a = Quaternion(1, 2, 3, 4)
+    b = Quaternion(4, 5, 6, 7)
+    tmp = Quaternion()
+
+    tmp.copy(a)
+    assert tmp == a
+
+    tmp.set(b.w, b.x, b.y, b.z)
+    assert tmp == b
+
+def test_QUATERNION_COPY_TYPE_ERROR():
+    q = Quaternion()
+    with pytest.raises(TypeError):
+        q.copy(1)
+
+def test_QUATERNION_CONJUGATE():
+    q = Quaternion(1, 2, 3, 4)
+    qc = q.conjugate()
+
+    assert qc == Quaternion(1, -2, -3, -4)
+    assert q == Quaternion(1, 2, 3, 4)
+
+def test_QUATERNION_ADD_SUB():
+    a = Quaternion(1, 2, 3, 4)
+    b = Quaternion(4, 3, 2, 1)
+
+    assert a + b == Quaternion(5, 5, 5, 5)
+    assert a - b == Quaternion(-3, -1, 1, 3)
+
+    assert a == Quaternion(1, 2, 3, 4)
+    assert b == Quaternion(4, 3, 2, 1)
+
+def test_QUATERNION_NEGATE():
+    q = Quaternion(1, 2, 3, 4)
+    assert -q == Quaternion(-1, -2, -3, -4)
+
+def test_QUATERNION_SCALAR_MULTIPLY():
+    q = Quaternion(1, 2, 3, 4)
+
+    assert q * 2 == Quaternion(2, 4, 6, 8)
+    assert 2 * q == Quaternion(2, 4, 6, 8)
+
+def test_QUATERNION_DIVIDE():
+    q = Quaternion(2, 4, 6, 8)
+
+    assert q / 2 == Quaternion(1, 2, 3, 4)
+
+    with pytest.raises(ZeroDivisionError):
+        q / 0
+
+def test_QUATERNION_ADD_INPLACE():
+    a = Quaternion(1, 2, 3, 4)
+    b = Quaternion(4, 3, 2, 1)
+
+    a.add(b)
+    assert a == Quaternion(5, 5, 5, 5)
+
+def test_QUATERNION_SUB_INPLACE():
+    a = Quaternion(5, 5, 5, 5)
+    b = Quaternion(4, 3, 2, 1)
+
+    a.sub(b)
+    assert a == Quaternion(1, 2, 3, 4)
+
+def test_QUATERNION_SCALE_INPLACE():
+    q = Quaternion(1, 2, 3, 4)
+
+    q.scale(2)
+    assert q == Quaternion(2, 4, 6, 8)
+
+    q.scale(0.5)
+    assert q == Quaternion(1, 2, 3, 4)
+
+def test_QUATERNION_INPLACE_TYPE_ERRORS():
+    q = Quaternion(1, 2, 3, 4)
+
+    with pytest.raises(TypeError):
+        q.add(1)
+
+    with pytest.raises(TypeError):
+        q.sub("x")
+
+    with pytest.raises(TypeError):
+        q.scale(Vector(1, 2, 3))
+
+def test_QUATERNION_MUL_IDENTITY():
+    q = Quaternion(1, 2, 3, 4)
+    I = Quaternion(1, 0, 0, 0)
+
+    assert I * q == q
+    assert q * I == q
+
+def test_QUATERNION_MUL_CONJUGATE():
+    q = Quaternion(1, 2, 3, 4)
+    qc = q.conjugate()
+    p = q * qc
+
+    assert p.w == pytest.approx(q.mag2())
+    assert p.x == pytest.approx(0.0)
+    assert p.y == pytest.approx(0.0)
+    assert p.z == pytest.approx(0.0)
+
+def test_QUATERNION_MUL_INPLACE():
+    q1 = Quaternion(0, 1, 0, 0)
+    q2 = Quaternion(0, 0, 1, 0)
+
+    tmp = Quaternion().copy(q1).mul(q2)
+    ref = q1 * q2
+
+    assert tmp == ref
+
+def test_QUATERNION_DIFF_SOLVES_RIGHT_FACTOR():
+    q_first = Quaternion().setFromAxisAngle(Vector(1, 0, 0), math.pi / 3)
+    q_second = Quaternion().setFromAxisAngle(Vector(0, 0, 1), math.pi / 4)
+    q_total = q_first * q_second
+
+    q_out = q_total.diff(q_first)
+
+    assert q_out.w == pytest.approx(q_second.w)
+    assert q_out.x == pytest.approx(q_second.x)
+    assert q_out.y == pytest.approx(q_second.y)
+    assert q_out.z == pytest.approx(q_second.z)
+
+def test_QUATERNION_DIFF2_SOLVES_LEFT_FACTOR():
+    q_first = Quaternion().setFromAxisAngle(Vector(1, 0, 0), math.pi / 3)
+    q_second = Quaternion().setFromAxisAngle(Vector(0, 0, 1), math.pi / 4)
+    q_total = q_first * q_second
+
+    q_out = q_total.diff2(q_second)
+
+    assert q_out.w == pytest.approx(q_first.w)
+    assert q_out.x == pytest.approx(q_first.x)
+    assert q_out.y == pytest.approx(q_first.y)
+    assert q_out.z == pytest.approx(q_first.z)
+
+def test_QUATERNION_DIFF_TYPE_ERRORS():
+    q = Quaternion()
+
+    with pytest.raises(TypeError):
+        q.diff(1)
+
+    with pytest.raises(TypeError):
+        q.diff2(1)
+
+def test_QUATERNION_SET_FROM_AXIS_ANGLE_Z_90():
+    axis = Vector(0, 0, 1)
+    q = Quaternion().setFromAxisAngle(axis, math.pi / 2)
+
+    assert q.w == pytest.approx(math.cos(math.pi / 4))
+    assert q.x == pytest.approx(0.0)
+    assert q.y == pytest.approx(0.0)
+    assert q.z == pytest.approx(math.sin(math.pi / 4))
+
+def test_QUATERNION_SET_FROM_AXIS_ANGLE_DOES_NOT_MUTATE_AXIS():
+    axis = Vector(0, 0, 1)
+    _ = Quaternion().setFromAxisAngle(axis, math.pi / 2)
+
+    assert axis == Vector(0, 0, 1)
+
+def test_QUATERNION_SET_FROM_AXIS_ANGLE_VALUE_ERROR():
+    axis = Vector(0, 0, 2)
+    with pytest.raises(ValueError):
+        Quaternion().setFromAxisAngle(axis, math.pi / 2)
+
+def test_QUATERNION_ROTATE_VECTOR_Z_90():
+    q = Quaternion().setFromAxisAngle(Vector(0, 0, 1), math.pi / 2)
+    v = Vector(1, 0, 0)
+
+    vr = q.rotate(v)
+
+    assert vr.x == pytest.approx(0.0, abs=1e-12)
+    assert vr.y == pytest.approx(1.0, abs=1e-12)
+    assert vr.z == pytest.approx(0.0, abs=1e-12)
+
+def test_QUATERNION_ROTATE_TYPE_ERROR():
+    q = Quaternion()
+
+    with pytest.raises(TypeError):
+        q.rotate(1)
