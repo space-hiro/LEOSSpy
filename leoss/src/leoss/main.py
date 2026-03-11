@@ -8,9 +8,10 @@ class Vector:
     __slots__ = ("x", "y", "z")
     def __init__(self, x=0.0, y=0.0, z=0.0):
         '''initialize a 3D vector'''
-        self.x = x
-        self.y = y
-        self.z = z
+        self.x = float(x)
+        self.y = float(y)
+        self.z = float(z)
+
     def __repr__(self): return f'Vector({self.x}, {self.y}, {self.z})'
     def __getitem__(self, item):
         if item == 0 : return self.x
@@ -26,6 +27,7 @@ class Vector:
         yield self.x
         yield self.y
         yield self.z
+
     def __add__(self, other):
         if not isinstance(other, Vector):
             return NotImplemented
@@ -131,21 +133,27 @@ class Vector:
         if not isinstance(other, Vector):
             raise TypeError("Operand must be a Vector")
         return self.x*other.x + self.y*other.y + self.z*other.z
-    
     def cross(self, other):
         '''
         cross product with another vector
-        overwrites existing vector with result
         '''
         if not isinstance(other, Vector):
             raise TypeError("Operand must be a Vector")
-        x = self.y*other.z - self.z*other.y
-        y = self.z*other.x - self.x*other.z
-        z = self.x*other.y - self.y*other.x
-
-        self.x = x
-        self.y = y
-        self.z = z
+        return Vector(
+            self.y*other.z - self.z*other.y,
+            self.z*other.x - self.x*other.z,
+            self.x*other.y - self.y*other.x
+        )
+    def crossVectors(self, vec1, vec2):
+        '''
+        cross product two vectors
+        overwrites existing vector with result
+        '''
+        if not isinstance(vec1, Vector) or not isinstance(vec2, Vector) :
+            raise TypeError("Operands must be type Vector")
+        self.x = vec1.y*vec2.z - vec1.z*vec2.y
+        self.y = vec1.z*vec2.x - vec1.x*vec2.z
+        self.z = vec1.x*vec2.y - vec1.y*vec2.x
         return self
 
     def mag2(self): return self.x*self.x + self.y*self.y + self.z*self.z
@@ -297,4 +305,233 @@ class Matrix:
             raise ZeroDivisionError("Matrix is singular")
         return inv / det
     
+    __str__ = __repr__
+
+class Quaternion:
+    __slots__ = ("w","x","y","z")
+
+    def __init__(self, w=1.0, x=0.0, y=0.0, z=0.0):
+        '''initialize a 4D quaternion'''
+        self.w = float(w)
+        self.x = float(x)
+        self.y = float(y)
+        self.z = float(z)
+
+    def __repr__(self): return f'Quaternion({self.w}, {self.x}, {self.y}, {self.z})'
+    def __getitem__(self, item):
+        if item == 0 : return self.w
+        if item == 1 : return self.x
+        if item == 2 : return self.y
+        if item == 3 : return self.z
+        raise IndexError("There are only four elements in the quaternion")
+    def __eq__(self, other):
+        if not isinstance(other, Quaternion):
+            return NotImplemented
+        return self.w == other.w and self.x == other.x and self.y == other.y and self.z == other.z
+    def __len__(self): return 4
+    def __iter__(self):
+        yield self.w
+        yield self.x
+        yield self.y
+        yield self.z
+    
+    def __add__(self, other):
+        if not isinstance(other, Quaternion):
+            return NotImplemented
+        return Quaternion(
+            self.w + other.w,
+            self.x + other.x,
+            self.y + other.y,
+            self.z + other.z
+        )
+    def __sub__(self, other):
+        if not isinstance(other, Quaternion):
+            return NotImplemented
+        return Quaternion(
+            self.w - other.w,
+            self.x - other.x,
+            self.y - other.y,
+            self.z - other.z
+        )
+    def __mul__(self, other):
+        if isinstance(other, Quaternion):
+            return Quaternion(
+                self.w*other.w - self.x*other.x - self.y*other.y - self.z*other.z,
+                self.w*other.x + self.x*other.w + self.y*other.z - self.z*other.y,
+                self.w*other.y - self.x*other.z + self.y*other.w + self.z*other.x,
+                self.w*other.z + self.x*other.y - self.y*other.x + self.z*other.w
+            )
+        if isinstance(other, (int, float)):
+            return Quaternion(
+                self.w * other,
+                self.x * other,
+                self.y * other,
+                self.z * other,
+            )
+        return NotImplemented
+    def __rmul__(self, other):
+        if isinstance(other, (int, float)):
+            return self * other
+        return NotImplemented
+    def __truediv__(self, scalar):
+        if not isinstance(scalar, (int, float)):
+            return NotImplemented
+        if abs(scalar) < ZERO:
+            raise ZeroDivisionError("Cannot divide by zero")
+        return Quaternion(self.w / scalar, self.x / scalar, self.y / scalar, self.z / scalar)
+    def __neg__(self): return Quaternion(-self.w, -self.x, -self.y, -self.z)
+
+    def copy(self, other):
+        if not isinstance(other, Quaternion):
+            raise TypeError("Operand must be a Quaternion")
+        self.w = other.w
+        self.x = other.x
+        self.y = other.y
+        self.z = other.z
+        return self
+    def set(self, w, x, y, z):
+        self.w = w
+        self.x = x
+        self.y = y
+        self.z = z
+        return self
+
+    def conjugate(self):
+        return Quaternion(self.w, -self.x, -self.y, -self.z)
+    def add(self, other):
+        '''
+        adds another quaternion
+        overwrites existing quaternion with result
+        '''
+        if not isinstance(other, Quaternion):
+            raise TypeError("Operand must be a Quaternion")
+        self.w += other.w
+        self.x += other.x
+        self.y += other.y
+        self.z += other.z
+        return self
+    def sub(self, other):
+        '''
+        subtracts another quaternion
+        overwrites existing quaternion with result
+        '''
+        if not isinstance(other, Quaternion):
+            raise TypeError("Operand must be a Quaternion")
+        self.w -= other.w
+        self.x -= other.x
+        self.y -= other.y
+        self.z -= other.z
+        return self
+    def scale(self, s):
+        '''
+        multiply elements with scalar
+        overwrites existing quaternion with result
+        '''
+        if not isinstance(s, (int, float)):
+            raise TypeError("Operand must be a scalar")
+        self.w *= s
+        self.x *= s
+        self.y *= s
+        self.z *= s
+        return self
+    def mul(self, other):
+        '''
+        multiply with another quaternion
+        qOut = qSelf ⊗ qInput
+        overwrites existing quaternion with result
+        '''
+        if not isinstance(other, Quaternion):
+            raise TypeError("Operand must be a Quaternion")
+        w = self.w*other.w - self.x*other.x - self.y*other.y - self.z*other.z
+        x = self.w*other.x + self.x*other.w + self.y*other.z - self.z*other.y
+        y = self.w*other.y - self.x*other.z + self.y*other.w + self.z*other.x
+        z = self.w*other.z + self.x*other.y - self.y*other.x + self.z*other.w
+        self.w = w
+        self.x = x
+        self.y = y
+        self.z = z
+        return self
+    def diff(self, other):
+        '''
+        quataernion difference or error 
+        solves for qOut in qSelf = qInput ​⊗ qOut
+        '''
+        if not isinstance(other, Quaternion):
+            raise TypeError("Operand must be a Quaternion")
+        return (other.conjugate() * self).normalize()
+    def diff2(self, other):
+        '''
+        quataernion difference or error 
+        solves for qOut in qSelf = qOut ​⊗ qInput
+        '''
+        if not isinstance(other, Quaternion):
+            raise TypeError("Operand must be a Quaternion")
+        return (self * other.conjugate()).normalize()
+    def normalize(self):
+        '''
+        normalize current quaternion
+        overwrites existing quaternion with result
+        '''
+        mag = self.mag()
+        if mag < ZERO:
+            raise ZeroDivisionError("Cannot normalize a zero quaternion")
+        self.w /= mag
+        self.x /= mag
+        self.y /= mag
+        self.z /= mag
+        return self
+    
+    def mag2(self): return self.w*self.w + self.x*self.x + self.y*self.y + self.z*self.z
+    def mag(self): return math.sqrt(self.mag2())
+
+    def rotate(self, v):
+        '''
+        returns the rotated vector by this quaternion
+            v' = q ⊗ (0, v) ⊗ q*
+        uses a slightly faster implementation
+            v' = v + 2qv × ( qv ​× v + qw v)
+        '''
+        if not isinstance(v, Vector):
+            raise TypeError("Operand must be a Vector")
+
+        # qv = Quaternion(0.0, v.x, v.y, v.z)
+        # r = self * qv * self.conjugate()
+
+        qw = self.w
+        qx = self.x
+        qy = self.y
+        qz = self.z
+
+        vx = v.x
+        vy = v.y
+        vz = v.z
+
+        # t = 2 * (qv x v)
+        tx = 2.0 * (qy * vz - qz * vy)
+        ty = 2.0 * (qz * vx - qx * vz)
+        tz = 2.0 * (qx * vy - qy * vx)
+
+        # v' = v + qw * t + (qv x t)
+        return Vector(
+            vx + qw * tx + (qy * tz - qz * ty),
+            vy + qw * ty + (qz * tx - qx * tz),
+            vz + qw * tz + (qx * ty - qy * tx),
+        )
+    def setFromAxisAngle(self, axis, angle):
+        '''
+        sets this quaternion for given axis and angle
+        '''
+        if not isinstance(axis, Vector):
+            raise TypeError("Axis must be a Vector")
+        if axis.mag2() - 1 > ZERO:
+            raise ValueError("Axis must be a unit Vector")
+        half = angle*0.5
+        s = math.sin(half)
+        self.w = math.cos(half)
+        self.x = axis.x * s
+        self.y = axis.y * s
+        self.z = axis.z * s
+        return self
+
+    magnitude = mag
     __str__ = __repr__
