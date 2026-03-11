@@ -190,7 +190,6 @@ class Vector:
 
 class Matrix:
     __slots__ = ("x","y","z")
-
     def __init__(self, x=None, y=None, z=None):
         if x is None: self.x = Vector(1.0, 0.0, 0.0)
         else:
@@ -332,7 +331,6 @@ class Matrix:
 
 class Quaternion:
     __slots__ = ("w","x","y","z")
-
     def __init__(self, w=1.0, x=0.0, y=0.0, z=0.0):
         '''initialize a 4D quaternion'''
         self.w = float(w)
@@ -571,7 +569,6 @@ class Quaternion:
 
 class State:
     __slots__ = ("m","p","v","q","w")
-    
     def __init__(self, mass=0.0, position=None, velocity=None, quaternion=None, bodyrate=None):
         self.m = float(mass)
         if position is None: self.p = Vector()

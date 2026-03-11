@@ -847,3 +847,11 @@ def test_STATE_ADD_SCALED():
 
     assert a.m == 3.0
     assert a.p == Vector(3,4,5)
+
+def test_STATE_ZERO():
+    a = State().zero()
+    assert a.m == 0.0
+    assert a.p.mag2() == 0.0
+    assert a.v.mag2() == 0.0
+    assert a.q.mag2() == 0.0
+    assert a.w.mag2() == 0.0
