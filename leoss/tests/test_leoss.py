@@ -737,11 +737,11 @@ def test_VECTOR_APPLY_QUATERNION_TYPE_ERROR():
 def test_STATE_CONSTRUCTOR_DEFAULT():
     s = State()
 
-    assert s.m == 0.0
-    assert s.p == Vector(0,0,0)
-    assert s.v == Vector(0,0,0)
-    assert s.q == Quaternion(1,0,0,0)
-    assert s.w == Vector(0,0,0)
+    assert s.mass   == 0.0
+    assert s.pos    == Vector(0,0,0)
+    assert s.vel    == Vector(0,0,0)
+    assert s.quat   == Quaternion(1,0,0,0)
+    assert s.omega  == Vector(0,0,0)
 
 def test_STATE_CONSTRUCTOR_COPIES():
     p = Vector(1,2,3)
@@ -750,7 +750,7 @@ def test_STATE_CONSTRUCTOR_COPIES():
 
     p.set(0,0,0)
 
-    assert s.p == Vector(1,2,3)
+    assert s.pos == Vector(1,2,3)
 
 def test_STATE_INDEXING():
     s = State(1, Vector(1,2,3), Vector(4,5,6), Quaternion(1,0,0,0), Vector(7,8,9))
@@ -778,9 +778,9 @@ def test_STATE_COPY_DEEP():
     a = State(1, Vector(1,2,3), Vector(4,5,6), Quaternion(1,0,0,0), Vector(7,8,9))
     b = State().copy(a)
 
-    a.p.set(0,0,0)
+    a.pos.set(0,0,0)
 
-    assert b.p == Vector(1,2,3)
+    assert b.pos == Vector(1,2,3)
 
 def test_STATE_ADD():
     a = State(1, Vector(1,2,3), Vector(4,5,6), Quaternion(1,1,1,1), Vector(7,8,9))
@@ -788,8 +788,8 @@ def test_STATE_ADD():
 
     a.add(b)
 
-    assert a.m == 2
-    assert a.p == Vector(2,3,4)
+    assert a.mass == 2
+    assert a.pos == Vector(2,3,4)
 
 def test_STATE_SUB():
     a = State(2, Vector(2,3,4), Vector(5,6,7), Quaternion(2,2,2,2), Vector(8,9,10))
@@ -797,16 +797,16 @@ def test_STATE_SUB():
 
     a.sub(b)
 
-    assert a.m == 1
-    assert a.p == Vector(1,2,3)
+    assert a.mass == 1
+    assert a.pos == Vector(1,2,3)
 
 def test_STATE_SCALE():
     s = State(1, Vector(1,2,3), Vector(4,5,6), Quaternion(1,2,3,4), Vector(7,8,9))
 
     s.scale(2)
 
-    assert s.m == 2
-    assert s.p == Vector(2,4,6)
+    assert s.mass == 2
+    assert s.pos == Vector(2,4,6)
 
 def test_STATE_TYPE_ERRORS():
     s = State()
@@ -845,13 +845,13 @@ def test_STATE_ADD_SCALED():
 
     a.add_scaled(b, 2)
 
-    assert a.m == 3.0
-    assert a.p == Vector(3,4,5)
+    assert a.mass == 3.0
+    assert a.pos == Vector(3,4,5)
 
 def test_STATE_ZERO():
     a = State().zero()
-    assert a.m == 0.0
-    assert a.p.mag2() == 0.0
-    assert a.v.mag2() == 0.0
-    assert a.q.mag2() == 0.0
-    assert a.w.mag2() == 0.0
+    assert a.mass == 0.0
+    assert a.pos.mag2() == 0.0
+    assert a.vel.mag2() == 0.0
+    assert a.quat.mag2() == 0.0
+    assert a.omega.mag2() == 0.0

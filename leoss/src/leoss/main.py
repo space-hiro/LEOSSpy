@@ -1,8 +1,14 @@
 import math
+import inspect
+import time as clock
+from tqdm import tqdm
 
 R2D     = 180/math.pi
 D2R     = math.pi/180
 ZERO    = 1e-12
+
+MU_EARTH = 398600.4418e9
+ER_EARTH = 6378.137e3
 
 class Vector:
     __slots__ = ("x", "y", "z")
@@ -69,6 +75,11 @@ class Vector:
         self.x = x
         self.y = y
         self.z = z
+        return self
+    def zero(self):
+        self.x = 0.0
+        self.y = 0.0
+        self.z = 0.0
         return self
 
     def add(self, other):
@@ -568,78 +579,85 @@ class Quaternion:
     __str__ = __repr__
 
 class State:
-    __slots__ = ("m","p","v","q","w")
+    __slots__ = (
+        "mass",
+        "pos",
+        "vel",
+        "quat",
+        "omega"
+    )
     def __init__(self, mass=0.0, position=None, velocity=None, quaternion=None, bodyrate=None):
-        self.m = float(mass)
-        if position is None: self.p = Vector()
+        self.mass = float(mass)
+        if position is None: self.pos = Vector()
         else:
             if not isinstance(position, Vector):
                 raise TypeError("position must be a Vector")
-            self.p = Vector(position.x, position.y, position.z)
-        if velocity is None: self.v = Vector()
+            self.pos = Vector(position.x, position.y, position.z)
+        if velocity is None: self.vel = Vector()
         else:
             if not isinstance(velocity, Vector):
                 raise TypeError("velocity must be a Vector")
-            self.v = Vector(velocity.x, velocity.y, velocity.z)
-        if quaternion is None: self.q = Quaternion(1.0, 0.0, 0.0, 0.0)
+            self.vel = Vector(velocity.x, velocity.y, velocity.z)
+        if quaternion is None: self.quat = Quaternion(1.0, 0.0, 0.0, 0.0)
         else:
             if not isinstance(quaternion, Quaternion):
                 raise TypeError("quaternion must be a Quaternion")
-            self.q = Quaternion(quaternion.w, quaternion.x, quaternion.y, quaternion.z)
-        if bodyrate is None: self.w = Vector()
+            self.quat = Quaternion(quaternion.w, quaternion.x, quaternion.y, quaternion.z)
+        if bodyrate is None: self.omega = Vector()
         else:
             if not isinstance(bodyrate, Vector):
                 raise TypeError("bodyrate must be a Vector")
-            self.w = Vector(bodyrate.x, bodyrate.y, bodyrate.z)
+            self.omega = Vector(bodyrate.x, bodyrate.y, bodyrate.z)
 
     def __repr__(self):
-        out = str(self.m)
-        for i in range(1,len(self),1):
-            out = out + ", " + str(self[i])
-        return f'State({out})'
+        out = ""
+        for slot_name in self.__slots__:
+            value = getattr(self, slot_name)
+            out += f"{slot_name}: {value}\n"
+        return out
     def __getitem__(self, item):
-        if item == 0 : return self.m
-        if item == 1 : return self.p
-        if item == 2 : return self.v
-        if item == 3 : return self.q
-        if item == 4 : return self.w
+        if item == 0 : return self.mass
+        if item == 1 : return self.pos
+        if item == 2 : return self.vel
+        if item == 3 : return self.quat
+        if item == 4 : return self.omega
         raise IndexError("There are only five elements in the State")
     def __len__(self): return 5
     def __iter__(self):
-        yield self.m
-        yield self.p
-        yield self.v
-        yield self.q
-        yield self.w
+        yield self.mass
+        yield self.pos
+        yield self.vel
+        yield self.quat
+        yield self.omega
     def __eq__(self, other):
         if not isinstance(other, State):
             return NotImplemented
         return (
-            self.m == other.m and
-            self.p == other.p and
-            self.v == other.v and
-            self.q == other.q and
-            self.w == other.w
+            self.mass   == other.mass and
+            self.pos    == other.pos and
+            self.vel    == other.vel and
+            self.quat   == other.quat and
+            self.omega  == other.omega
         )
 
     def copy(self, other):
         if not isinstance(other, State):
             raise TypeError("Operand must be a State")
-        self.m = other.m
-        self.p.copy(other.p)
-        self.v.copy(other.v)
-        self.q.copy(other.q)
-        self.w.copy(other.w)
+        self.mass = other.mass
+        self.pos.copy(other.pos)
+        self.vel.copy(other.vel)
+        self.quat.copy(other.quat)
+        self.omega.copy(other.omega)
         return self
     def zero(self):
         '''
         set all elements of state to zero
         '''
-        self.m = 0.0
-        self.p.set(0.0, 0.0, 0.0)
-        self.v.set(0.0, 0.0, 0.0)
-        self.q.set(0.0, 0.0, 0.0, 0.0)
-        self.w.set(0.0, 0.0, 0.0)
+        self.mass = 0.0
+        self.pos.set(0.0, 0.0, 0.0)
+        self.vel.set(0.0, 0.0, 0.0)
+        self.quat.set(0.0, 0.0, 0.0, 0.0)
+        self.omega.set(0.0, 0.0, 0.0)
         return self
     def add(self, other):
         '''
@@ -648,11 +666,11 @@ class State:
         '''
         if not isinstance(other, State):
             raise TypeError("Operand must be a State")
-        self.m += other.m
-        self.p.add(other.p)
-        self.v.add(other.v)
-        self.q.add(other.q)
-        self.w.add(other.w)
+        self.mass += other.mass
+        self.pos.add(other.pos)
+        self.vel.add(other.vel)
+        self.quat.add(other.quat)
+        self.omega.add(other.omega)
         return self
     def sub(self, other):
         '''
@@ -661,11 +679,11 @@ class State:
         '''
         if not isinstance(other, State):
             raise TypeError("Operand must be a State")
-        self.m -= other.m
-        self.p.sub(other.p)
-        self.v.sub(other.v)
-        self.q.sub(other.q)
-        self.w.sub(other.w)
+        self.mass -= other.mass
+        self.pos.sub(other.pos)
+        self.vel.sub(other.vel)
+        self.quat.sub(other.quat)
+        self.omega.sub(other.omega)
         return self
     def add_scaled(self, other, s):
         if not isinstance(other, State):
@@ -673,23 +691,23 @@ class State:
         if not isinstance(s, (int, float)):
             raise TypeError("Operand must be a scalar")
 
-        self.m   += other.m * s
-        self.p.x += other.p.x * s
-        self.p.y += other.p.y * s
-        self.p.z += other.p.z * s
+        self.mass   += other.mass * s
+        self.pos.x += other.pos.x * s
+        self.pos.y += other.pos.y * s
+        self.pos.z += other.pos.z * s
 
-        self.v.x += other.v.x * s
-        self.v.y += other.v.y * s
-        self.v.z += other.v.z * s
+        self.vel.x += other.vel.x * s
+        self.vel.y += other.vel.y * s
+        self.vel.z += other.vel.z * s
 
-        self.q.w += other.q.w * s
-        self.q.x += other.q.x * s
-        self.q.y += other.q.y * s
-        self.q.z += other.q.z * s
+        self.quat.w += other.quat.w * s
+        self.quat.x += other.quat.x * s
+        self.quat.y += other.quat.y * s
+        self.quat.z += other.quat.z * s
 
-        self.w.x += other.w.x * s
-        self.w.y += other.w.y * s
-        self.w.z += other.w.z * s
+        self.omega.x += other.omega.x * s
+        self.omega.y += other.omega.y * s
+        self.omega.z += other.omega.z * s
         return self
     def scale(self, other):
         '''
@@ -698,11 +716,11 @@ class State:
         '''
         if not isinstance(other, (int, float)):
             raise TypeError("Operand must be a scalar")
-        self.m *= other
-        self.p.scale(other)
-        self.v.scale(other)
-        self.q.scale(other)
-        self.w.scale(other)
+        self.mass *= other
+        self.pos.scale(other)
+        self.vel.scale(other)
+        self.quat.scale(other)
+        self.omega.scale(other)
         return self
 
     __str__ = __repr__
