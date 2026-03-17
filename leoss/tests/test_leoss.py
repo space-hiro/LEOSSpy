@@ -1146,3 +1146,29 @@ def test_SIMULATION_CIRCULAR_CONSERVATION():
     simulate(p, 1000, 1/4)
 
     assert sc.checkConservation()
+
+def test_PLANET_DATETIME_BEFORE_AFTER():
+    p = Planet().setAs("earth")
+    p.addSpacecraft("SC")
+    sc = p.getSpacecrafts()["SC"]
+
+    r = ER_EARTH_M + 400e3
+    v_circ = math.sqrt(p.mu / r)
+
+    sc.setmass(1.0)
+    sc.setposition(Vector(r, 0, 0))
+    sc.setvelocity(Vector(0, v_circ, 0))
+    sc.inertia = Matrix()
+
+    p.setEpoch(2026, 1, 1, 12, 59, 59, 123456)
+    assert p.getEpoch()                 == 1767272399.123456
+    assert str(p.getEpochDatetime())         == "2026-01-01 12:59:59.123456"
+    assert p.getCurrentUnix()           == 1767272399.123456
+    assert str(p.getCurrentDatetime())  == "2026-01-01 12:59:59.123456"
+
+    simulateProgress(p, 1_000)
+
+    assert p.getEpoch()                 == 1767272399.123456
+    assert str(p.getEpochDatetime())         == "2026-01-01 12:59:59.123456"
+    assert p.getCurrentUnix()           == 1767272399.123456 + 1000
+    assert str(p.getCurrentDatetime())  == "2026-01-01 13:16:39.123456"

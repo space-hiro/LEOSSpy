@@ -1,6 +1,7 @@
 import math
 import inspect
 import time as clock
+from datetime import datetime, timezone
 from tqdm import tqdm
 
 #### globals
@@ -965,7 +966,8 @@ class Planet:
         "spacecraftObjects",
         "time",
         "radi",
-        "mu"
+        "mu",
+        "__unix"
     )
 
     def __init__(self):
@@ -973,6 +975,8 @@ class Planet:
         self.time = 0.0
         self.mu   = 0.0
         self.radi = 0.0
+
+        self.__unix = clock.time()
     
     def setAs(self, name):
         if not isinstance(name, str):
@@ -984,6 +988,25 @@ class Planet:
             case _:
                 print("WARNING: unknown planet name, set failed.")
         return self
+    
+    def setEpoch(self, year=0, month=0, day=0, hour=0, minute=0, second=0, microsecond=0):     
+        datetime_utc = datetime(year, month, day, hour, minute, second, microsecond, tzinfo=timezone.utc)
+        self.__unix = datetime_utc.timestamp()
+
+    def setEpochFromDatetime(self, dt: datetime):
+        self.__unix = dt.timestamp()
+
+    def getEpoch(self):
+        return self.__unix
+    
+    def getEpochDatetime(self):
+        return datetime.fromtimestamp(self.__unix)
+    
+    def getCurrentUnix(self):
+        return self.__unix + self.time
+    
+    def getCurrentDatetime(self):
+        return datetime.fromtimestamp(self.__unix + self.time)
 
     def addSpacecraft(self, name):
         spacecraft = Spacecraft(name)
