@@ -3,12 +3,16 @@ import inspect
 import time as clock
 from tqdm import tqdm
 
+#### globals
+
 R2D     = 180/math.pi
 D2R     = math.pi/180
 ZERO    = 1e-12
 
-MU_EARTH = 398600.4418e9
-ER_EARTH = 6378.137e3
+MU_EARTH_M = 398_600.441_8e9
+ER_EARTH_M = 6_378.137e3
+
+#### classes
 
 class Vector:
     __slots__ = ("x", "y", "z")
