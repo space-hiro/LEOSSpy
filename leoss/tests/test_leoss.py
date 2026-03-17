@@ -855,3 +855,294 @@ def test_STATE_ZERO():
     assert a.vel.mag2() == 0.0
     assert a.quat.mag2() == 0.0
     assert a.omega.mag2() == 0.0
+
+def test_PLANET_SETAS_EARTH():
+    p = Planet().setAs("earth")
+
+    assert p.mu == MU_EARTH_M
+    assert p.radi == ER_EARTH_M
+    assert p.time == 0.0
+    assert p.getSpacecrafts() == {}
+
+def test_PLANET_ADD_SPACECRAFT():
+    p = Planet().setAs("earth")
+    p.addSpacecraft("SC-1")
+
+    sc = p.getSpacecrafts()["SC-1"]
+
+    assert isinstance(sc, Spacecraft)
+    assert sc.name == "SC-1"
+    assert sc.planet is p
+
+def test_SPACECRAFT_SETTERS():
+    sc = Spacecraft("SC")
+
+    sc.setmass(10.0)
+    sc.setposition(Vector(1, 2, 3))
+    sc.setvelocity(Vector(4, 5, 6))
+    sc.setbodyrate(Vector(180, 0, 0))   # deg/s
+    sc.setquaternion(Quaternion(1, 0, 0, 0))
+
+    assert sc.state.mass == 10.0
+    assert sc.state.pos == Vector(1, 2, 3)
+    assert sc.state.vel == Vector(4, 5, 6)
+    assert sc.state.omega.x == pytest.approx(math.pi)
+    assert sc.state.omega.y == pytest.approx(0.0)
+    assert sc.state.omega.z == pytest.approx(0.0)
+    assert sc.state.quat == Quaternion(1, 0, 0, 0)
+
+def test_SPACECRAFT_SETTERS_TYPE_ERRORS():
+    sc = Spacecraft("SC")
+
+    with pytest.raises(TypeError):
+        sc.setmass("x")
+
+    with pytest.raises(TypeError):
+        sc.setposition(1)
+
+    with pytest.raises(TypeError):
+        sc.setvelocity(1)
+
+    with pytest.raises(TypeError):
+        sc.setbodyrate(1)
+
+    with pytest.raises(TypeError):
+        sc.setquaternion(1)
+
+def test_SPACECRAFT_ADD_FORCE_VALID():
+    sc = Spacecraft("SC")
+
+    def constant_force(state, time):
+        return Vector(1, 0, 0)
+
+    assert sc.addFORCE(constant_force, "F") is True
+
+def test_SPACECRAFT_ADD_FORCE_INVALID_SIGNATURE():
+    sc = Spacecraft("SC")
+
+    def bad_force(state):
+        return Vector(1, 0, 0)
+
+    assert sc.addFORCE(bad_force, "BAD") is False
+
+def test_SPACECRAFT_ADD_FORCE_INVALID_RETURN():
+    sc = Spacecraft("SC")
+
+    def bad_force(state, time):
+        return 123
+
+    assert sc.addFORCE(bad_force, "BAD") is False
+
+def test_SPACECRAFT_ADD_TORQUE_AND_MOMENTUM_VALID():
+    sc = Spacecraft("SC")
+
+    def torque(state, time):
+        return Vector(0, 1, 0)
+
+    def momentum(state, time):
+        return Vector(0, 0, 2)
+
+    assert sc.addTORQUE(torque, "T") is True
+    assert sc.addMOMENTUM(momentum, "H") is True
+
+def test_PLANET_GRAVITY_DIRECTION_AND_MAGNITUDE():
+    p = Planet().setAs("earth")
+    s = State(
+        mass=2.0,
+        position=Vector(ER_EARTH_M, 0.0, 0.0),
+        velocity=Vector(),
+        quaternion=Quaternion(),
+        bodyrate=Vector(),
+    )
+
+    g = p.gravity(s, 0.0)
+
+    expected_mag = p.mu * s.mass / (ER_EARTH_M ** 2)
+
+    assert g.x == pytest.approx(-expected_mag)
+    assert g.y == pytest.approx(0.0)
+    assert g.z == pytest.approx(0.0)
+
+def test_SPACECRAFT_COMPUTE_EXTERNAL():
+    sc = Spacecraft("SC")
+    sc.state.mass = 2.0
+    sc.state.omega = Vector(1, 2, 3)
+    sc.inertia = Matrix(
+        Vector(2, 0, 0),
+        Vector(0, 3, 0),
+        Vector(0, 0, 4),
+    )
+
+    def f1(state, time):
+        return Vector(1, 0, 0)
+
+    def f2(state, time):
+        return Vector(0, 2, 0)
+
+    def t1(state, time):
+        return Vector(0, 0, 3)
+
+    def h1(state, time):
+        return Vector(4, 5, 6)
+
+    sc.addFORCE(f1, "F1")
+    sc.addFORCE(f2, "F2")
+    sc.addTORQUE(t1, "T1")
+    sc.addMOMENTUM(h1, "H1")
+
+    sc.computeEXTERNAL(sc.state, 0.0)
+
+    assert sc.netFORCE == Vector(1, 2, 0)
+    assert sc.netTORQUE == Vector(0, 0, 3)
+
+    # inertia * omega = (2, 6, 12), plus external momentum (4,5,6)
+    assert sc.netMOMENTUM == Vector(6, 11, 18)
+
+def test_SPACECRAFT_DERIVATIVE_TRANSLATION_ONLY():
+    sc = Spacecraft("SC")
+    sc.state.mass = 2.0
+    sc.inertia = Matrix()  # identity
+
+    state = State(
+        mass=2.0,
+        position=Vector(10, 20, 30),
+        velocity=Vector(1, 2, 3),
+        quaternion=Quaternion(1, 0, 0, 0),
+        bodyrate=Vector(0, 0, 0),
+    )
+    dstate = State().zero()
+
+    def force(state, time):
+        return Vector(4, 0, 0)
+
+    sc.addFORCE(force, "F")
+
+    sc.derivative(state, 0.0, dstate)
+
+    assert dstate.mass == 0.0
+    assert dstate.pos == Vector(1, 2, 3)
+    assert dstate.vel == Vector(2, 0, 0)
+    assert dstate.quat == Quaternion(0, 0, 0, 0)
+    assert dstate.omega == Vector(0, 0, 0)
+
+def test_PLANET_INIT_CREATES_RECORD():
+    p = Planet().setAs("earth")
+    p.addSpacecraft("SC")
+    sc = p.getSpacecrafts()["SC"]
+
+    sc.setmass(1.0)
+    sc.setposition(Vector(ER_EARTH_M + 400e3, 0, 0))
+    sc.setvelocity(Vector(0, 1, 0))
+
+    p.INIT()
+
+    rec = sc.getRECORD()
+
+    assert "Time" in rec
+    assert "Position" in rec
+    assert "Velocity" in rec
+    assert "Quaternion" in rec
+    assert "Bodyrate" in rec
+    assert len(rec["Time"]) == 1
+    assert rec["Time"][0] == 0.0
+
+def test_PLANET_STEP_UPDATES_TIME_AND_RECORD():
+    p = Planet()
+    p.addSpacecraft("SC")
+    sc = p.getSpacecrafts()["SC"]
+
+    sc.setmass(1.0)
+    sc.setposition(Vector(1, 0, 0))
+    sc.setvelocity(Vector(1, 0, 0))
+    sc.inertia = Matrix()
+
+    def no_force(state, time):
+        return Vector(0, 0, 0)
+
+    sc.addFORCE(no_force, "ZERO")
+    sc.initRECORD()
+
+    p.step(0.5)
+
+    assert p.time == pytest.approx(0.5)
+    rec = sc.getRECORD()
+    assert len(rec["Time"]) == 2
+    assert rec["Time"][-1] == pytest.approx(0.5)
+
+def test_EARTH_ORBIT_SMALL_STEP_SANITY():
+    p = Planet().setAs("earth")
+    p.addSpacecraft("SC")
+    sc = p.getSpacecrafts()["SC"]
+
+    r = ER_EARTH_M + 400e3
+    v_circ = math.sqrt(p.mu / r)
+
+    sc.setmass(1.0)
+    sc.setposition(Vector(r, 0, 0))
+    sc.setvelocity(Vector(0, v_circ, 0))
+    sc.inertia = Matrix()
+
+    p.INIT()
+    p.step(1.0)
+
+    # After a 1-second step, still near original radius and unit quaternion norm
+    assert sc.state.pos.mag() == pytest.approx(r, rel=1e-4)
+    assert sc.state.quat.mag() == pytest.approx(1.0, rel=1e-12)
+
+def test_SPACECRAFT_RECORD_LENGTHS_STAY_ALIGNED():
+    p = Planet().setAs("earth")
+    p.addSpacecraft("SC")
+    sc = p.getSpacecrafts()["SC"]
+
+    r = ER_EARTH_M + 400e3
+    v_circ = math.sqrt(p.mu / r)
+
+    sc.setmass(1.0)
+    sc.setposition(Vector(r, 0, 0))
+    sc.setvelocity(Vector(0, v_circ, 0))
+    sc.inertia = Matrix()
+
+    p.INIT()
+    p.step(1.0)
+    p.step(1.0)
+
+    rec = sc.getRECORD()
+    n = len(rec["Time"])
+
+    for key, value in rec.items():
+        assert len(value) == n, key
+
+def test_SIMULATION_LEO_CONSERVATION():
+    system = Planet().setAs('EARTH')
+    system.addSpacecraft("MULA")
+
+    spacecrafts = system.getSpacecrafts()
+
+    MULA = spacecrafts["MULA"]
+
+    MULA.setmass(155)
+    MULA.setposition(Vector(-5.18435402e+06,4.67140733e+06,-3.33373976e+02))
+    MULA.setvelocity(Vector(0.69496868e3,0.7719583e3,7.4857076e3))
+    MULA.setbodyrate(Vector(10,10,10))
+    MULA.inertia = Matrix(Vector(18.5,0.97,0.97),Vector(0.97,20.0,1.12),Vector(0.97,1.12,17.2))
+
+    simulate(system, 1000, 1/8)
+
+    assert MULA.checkConservation()
+
+def test_SIMULATION_CIRCULAR_CONSERVATION():
+    p = Planet().setAs("earth")
+    p.addSpacecraft("SC")
+    sc = p.getSpacecrafts()["SC"]
+
+    r = ER_EARTH_M + 400e3
+    v_circ = math.sqrt(p.mu / r)
+
+    sc.setmass(1.0)
+    sc.setposition(Vector(r, 0, 0))
+    sc.setvelocity(Vector(0, v_circ, 0))
+    sc.inertia = Matrix()
+
+    simulate(p, 1000, 1/4)
+
+    assert sc.checkConservation()
