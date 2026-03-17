@@ -728,3 +728,362 @@ class State:
         return self
 
     __str__ = __repr__
+
+class Spacecraft:
+    __slots__ = (
+        "name",
+        "size",
+        "state",
+        "inertia",
+        "netFORCE",
+        "netTORQUE",
+        "netMOMENTUM",
+        "planet",
+        "__forceFUNC",
+        "__torqueFUNC",
+        "__momentumFUNC",
+        "__stateRECORD"
+    )
+
+    def __init__(self, name):
+        self.name    = name
+        self.size    = Vector()
+        self.state   = State()
+        self.inertia = Matrix()
+
+        self.netFORCE    = Vector()
+        self.netTORQUE   = Vector()
+        self.netMOMENTUM = Vector()
+
+        self.planet = None
+
+        self.__forceFUNC    = {}
+        self.__torqueFUNC   = {}
+        self.__momentumFUNC = {}
+
+        self.__stateRECORD = {}
+
+    def __repr__(self):
+        out = ""
+        for slot_name in self.__slots__:
+            if slot_name.startswith("__"): continue
+            value = getattr(self, slot_name)
+            out += f"{slot_name}: {value}\n"
+        return out
+
+    def setmass(self, mass):
+        if not isinstance(mass, (int, float)):
+            raise TypeError("Operance should be int or float")
+        self.state.mass = float(mass)
+    def setposition(self, vector):
+        if isinstance(vector, Vector):
+            self.state.pos.copy(vector)
+        else:
+            raise TypeError("Operand should be a Vector")
+    def setvelocity(self, vector):
+        if isinstance(vector, Vector):
+            self.state.vel.copy(vector)
+        else:
+            raise TypeError("Operand should be a Vector")
+    def setbodyrate(self, vector):
+        if isinstance(vector, Vector):
+            self.state.omega.copy(vector).scale(D2R)
+        else:
+            raise TypeError("Operand should be a vector in 'deg/s'")
+    def setquaternion(self, quat):
+        if isinstance(quat, Quaternion):
+            self.state.quat.copy(quat)
+        else:
+            raise TypeError("Operand should be a quaternion")
+
+    def derivative(self, state:State, time, dstate:State):
+
+        self.computeEXTERNAL(state, time)
+
+        dstate.mass  = 0
+
+        dstate.pos.copy(state.vel)
+
+        dstate.vel.copy(self.netFORCE).scale(1/state.mass)
+        
+        # dstate.quat.copy(quaternionDerivative(state.omega, state.quat))
+        dstate.quat.copy(state.quat * Quaternion().set(0, state.omega.x, state.omega.y, state.omega.z ))
+
+        dstate.omega.copy(self.inertia.inverse()*(self.netTORQUE-state.omega.cross(self.netMOMENTUM)))
+    
+    def computeEXTERNAL(self, state:State, time):
+        self.netFORCE.zero()
+        self.netTORQUE.zero()
+        self.netMOMENTUM.zero()
+
+        self.netMOMENTUM.copy(self.inertia*state.omega)
+
+        for force in self.__forceFUNC.values():
+            self.netFORCE.add(force(state, time))
+
+        for torq in self.__torqueFUNC.values():
+            self.netTORQUE.add(torq(state, time))
+
+        for moment in self.__momentumFUNC.values():
+            self.netMOMENTUM.add(moment(state, time))
+
+    def addFORCE(self, func, desc='NoName'):
+        if not callable(func):
+            print(f"WARNING: input is not callable, addFORCE failed.")
+            return False
+        
+        sig = inspect.signature(func)
+
+        if len(sig.parameters) != 2:
+            print(f"WARNING: input must accept 2 arguments as `func(state, time)`, addFORCE failed.")
+            return False
+
+        if not checkFUNC(func, self.state, 0):
+            print(f"WARNING: input is not valid, addFORCE failed.")
+            return False
+        
+        if type(func(self.state, 0)) != Vector:
+            print(f"WARNING: input does not return Vector, addFORCE failed.")
+            return False
+
+        self.__forceFUNC[desc] = func
+        return True
+    
+    def addTORQUE(self, func, desc='NoName'):
+        if not callable(func):
+            print(f"WARNING: input is not callable, addTORQUE failed.")
+            return False
+        
+        sig = inspect.signature(func)
+
+        if len(sig.parameters) != 2:
+            print(f"WARNING: input must accept 2 arguments as `func(state, time)`, addTORQUE failed.")
+            return False
+        
+        if not checkFUNC(func, self.state, 0):
+            print(f"WARNING: input is not valid, addTORQUE failed.")
+            return False
+        
+        if type(func(self.state, 0)) != Vector:
+            print(f"WARNING: input does not return Vector, addTORQUE failed.")
+            return False
+        
+        self.__torqueFUNC[desc] = func
+        return True
+    
+    def addMOMENTUM(self, func, desc='NoName'):
+        if not callable(func):
+            print(f"WARNING: input is not callable, addMOMENTUM failed.")
+            return False
+        
+        sig = inspect.signature(func)
+
+        if len(sig.parameters) != 2:
+            print(f"WARNING: input must accept 2 arguments as `func(state, time)`, addMOMENTUM failed.")
+            return False
+
+        if not checkFUNC(func, self.state, 0):
+            print(f"WARNING: input is not valid, addMOMENTUM failed.")
+            return False
+        
+        if type(func(self.state, 0)) != Vector:
+            print(f"WARNING: input does not return Vector, addMOMENTUM failed.")
+            return False
+        
+        self.__momentumFUNC[desc] = func
+        return True
+
+    def initRECORD(self):
+        self.__stateRECORD['Time'] = [self.planet.time]
+        #### state
+        self.__stateRECORD['Position']    = [Vector().copy(self.state.pos)]
+        self.__stateRECORD['Velocity']    = [Vector().copy(self.state.vel)]
+        self.__stateRECORD['Quaternion']  = [Quaternion().copy(self.state.quat)]
+        self.__stateRECORD['Bodyrate']    = [Vector().copy(self.state.omega)]
+        #### externals
+        self.__stateRECORD['NetForce']      = [Vector().copy(self.netFORCE)]          
+        self.__stateRECORD['NetTorque']     = [Vector().copy(self.netTORQUE)]
+        self.__stateRECORD['NetMomentum']   = [Vector().copy(self.netMOMENTUM)]
+        #### energy
+        self.__stateRECORD['SpecificOrbitalEnergy'] \
+            = [ (self.state.vel.mag2()/2 - (self.planet.mu/self.state.pos.mag())) ]
+        self.__stateRECORD['SpecificAngularMomentum'] \
+            = [ self.state.pos.cross(self.state.vel).mag() ]
+        self.__stateRECORD['BodyAngularMomentum'] \
+            = [ (self.inertia*self.state.omega).mag() ]
+        self.__stateRECORD['RotationalKineticEnergy'] \
+            = [ 0.5 * self.state.omega.dot(self.inertia*self.state.omega) ] 
+
+    def getRECORD(self):
+        return self.__stateRECORD
+    
+    def updateRECORD(self, deltaTime):
+        self.__stateRECORD['Time'].append(self.planet.time + deltaTime)
+        #### state
+        self.__stateRECORD['Position'].append(Vector().copy(self.state.pos))
+        self.__stateRECORD['Velocity'].append(Vector().copy(self.state.vel))
+        self.__stateRECORD['Quaternion'].append(Quaternion().copy(self.state.quat))
+        self.__stateRECORD['Bodyrate'].append(Vector().copy(self.state.omega))
+        #### externals
+        self.__stateRECORD['NetForce'].append(Vector().copy(self.netFORCE))          
+        self.__stateRECORD['NetTorque'].append(Vector().copy(self.netTORQUE))
+        self.__stateRECORD['NetMomentum'].append(Vector().copy(self.netMOMENTUM))
+        #### energy
+        self.__stateRECORD['SpecificOrbitalEnergy'] \
+            .append(self.state.vel.mag2()/2 - (self.planet.mu/self.state.pos.mag()))
+        self.__stateRECORD['SpecificAngularMomentum'] \
+            .append(self.state.pos.cross(self.state.vel).mag())
+        self.__stateRECORD['BodyAngularMomentum'] \
+            .append( (self.inertia*self.state.omega).mag() )
+        self.__stateRECORD['RotationalKineticEnergy'] \
+            .append( 0.5 * self.state.omega.dot(self.inertia*self.state.omega) )
+        
+    def checkConservation(self, tol=ZERO):
+        OE = self.__stateRECORD['SpecificOrbitalEnergy']
+        OM = self.__stateRECORD['SpecificAngularMomentum']
+        RM = self.__stateRECORD['BodyAngularMomentum']
+        RE = self.__stateRECORD['RotationalKineticEnergy']
+
+        relOE = abs(OE[-1] - OE[0]) / max(abs(OE[0]), ZERO)
+        relOM = abs(OM[-1] - OM[0]) / max(abs(OM[0]), ZERO)
+        relRM = abs(RM[-1] - RM[0]) / max(abs(RM[0]), ZERO) if abs(RM[0]) > ZERO else abs(RM[-1] - RM[0])
+        relRE = abs(RE[-1] - RE[0]) / max(abs(RE[0]), ZERO) if abs(RE[0]) > ZERO else abs(RE[-1] - RE[0])
+
+        print("\nInvariants Relative Drift:")
+        print("\tSpecificOrbitalEnergy    :  ", '%+.6E'%relOE, "\t|",'%+.6E'%OE[0],"\t|",'%+.6E'%OE[-1])
+        print("\tSpecificAngularMomentum  :  ", '%+.6E'%relOM, "\t|",'%+.6E'%OM[0],"\t|",'%+.6E'%OM[-1])
+        print("\tBodyAngularMomentum      :  ", '%+.6E'%relRM, "\t|",'%+.6E'%RM[0],"\t|",'%+.6E'%RM[-1])
+        print("\tRotationalKineticEnergy  :  ", '%+.6E'%relRE, "\t|",'%+.6E'%RE[0],"\t|",'%+.6E'%RE[-1])
+        print("\n")
+
+        return relOE < tol and relOM < tol and relRM < tol and relRE < tol
+        
+    __str__ = __repr__
+
+class Planet:
+    __slots__ = (
+        "spacecraftObjects",
+        "time",
+        "radi",
+        "mu"
+    )
+
+    def __init__(self):
+        self.spacecraftObjects = {}
+        self.time = 0.0
+        self.mu   = 0.0
+        self.radi = 0.0
+    
+    def setAs(self, name):
+        if not isinstance(name, str):
+            raise TypeError("Input argument should be a string")
+        match(name.lower()):
+            case 'earth':
+                self.mu   = MU_EARTH_M
+                self.radi = ER_EARTH_M
+            case _:
+                print("WARNING: unknown planet name, set failed.")
+        return self
+
+    def addSpacecraft(self, name):
+        spacecraft = Spacecraft(name)
+        self.spacecraftObjects[name] = spacecraft
+        spacecraft.planet = self
+
+    def step(self, deltaTime):
+        for spacecraft in self.spacecraftObjects.values():
+            runggeKutta4(spacecraft.derivative, spacecraft.state, self.time, deltaTime)
+            spacecraft.updateRECORD(deltaTime)
+        self.time += deltaTime
+
+    def getSpacecrafts(self):
+        return self.spacecraftObjects
+    
+    def INIT(self):
+        for spacecraft in self.spacecraftObjects.values():
+            spacecraft.addFORCE(self.gravity, "GRAVITY_2BODY")
+            spacecraft.initRECORD()
+
+    def gravity(self, state, time):
+        rho = state.pos.mag()
+        out = Vector().copy(state.pos)
+        return out.scale(-(self.mu*state.mass/(rho*rho*rho)))
+
+#### functions
+
+def quaternionDerivative(omega: Vector, quat: Quaternion):
+    qdotW =       0*quat.w - omega.x*quat.x - omega.y*quat.y - omega.z*quat.z
+    qdotX = omega.x*quat.w +       0*quat.x + omega.z*quat.y - omega.y*quat.z
+    qdotY = omega.y*quat.w - omega.z*quat.x +       0*quat.y + omega.x*quat.z
+    qdotZ = omega.z*quat.w + omega.y*quat.x - omega.x*quat.y +       0*quat.z
+    return Quaternion( qdotW/2, qdotX/2, qdotY/2, qdotZ/2 )
+
+def checkFUNC(func, *args, **kwargs):
+    try:
+        func(*args, **kwargs)
+        return True
+    except Exception as error:
+        print(f"WARNING: {error}")
+        return False
+
+__RK4__k1   = State().zero()
+__RK4__k2   = State().zero()
+__RK4__k3   = State().zero()
+__RK4__k4   = State().zero()
+__RK4__tmp  = State().zero()
+def runggeKutta4(derivative, state: State, time, deltaTime):
+    __RK4__k1.zero()
+    __RK4__k2.zero()
+    __RK4__k3.zero()
+    __RK4__k4.zero()
+    __RK4__tmp.zero()
+
+    derivative(state, time, __RK4__k1)
+
+    __RK4__tmp.copy(state)
+    __RK4__tmp.add_scaled(__RK4__k1, 0.5 * deltaTime)
+    __RK4__tmp.quat.normalize()
+    derivative(__RK4__tmp, time + 0.5 * deltaTime, __RK4__k2)
+
+    __RK4__tmp.copy(state)
+    __RK4__tmp.add_scaled(__RK4__k2, 0.5 * deltaTime)
+    __RK4__tmp.quat.normalize()
+    derivative(__RK4__tmp, time + 0.5 * deltaTime, __RK4__k3)
+
+    __RK4__tmp.copy(state)
+    __RK4__tmp.add_scaled(__RK4__k3, deltaTime)
+    __RK4__tmp.quat.normalize()
+    derivative(__RK4__tmp, time + deltaTime, __RK4__k4)
+
+    state.add_scaled(__RK4__k1, deltaTime / 6.0)
+    state.add_scaled(__RK4__k2, deltaTime / 3.0)
+    state.add_scaled(__RK4__k3, deltaTime / 3.0)
+    state.add_scaled(__RK4__k4, deltaTime / 6.0)
+    state.quat.normalize()
+
+def simulateProgress(system: Planet, timeEnd, timeStep=1/4):
+    print("\nRun Simulation (from "+str(system.time)+" to "+str(timeEnd)+", step="+str(timeStep)+")")
+    t0 = clock.time()
+
+    pbar = tqdm(total=timeEnd-system.time, position=0, desc='Simulating', bar_format='{l_bar}{bar:25}{r_bar}{bar:-25b}')
+    
+    ## system init
+    system.INIT()
+
+    while(system.time < timeEnd):
+        prev_time = system.time
+
+        system.step(timeStep)
+
+        pbar.update(system.time - prev_time)
+    pbar.close()
+
+    t1 = clock.time()
+    print("\nElapsed Time:\t"+str(t1-t0)+" sec.")
+
+def simulate(system: Planet, timeEnd, timeStep=1/4):
+    ## system init
+    system.INIT()
+
+    while(system.time < timeEnd):
+        system.step(timeStep)
