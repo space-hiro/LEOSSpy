@@ -1162,13 +1162,13 @@ def test_PLANET_DATETIME_BEFORE_AFTER():
 
     p.setEpoch(2026, 1, 1, 12, 59, 59, 123456)
     assert p.getEpoch()                 == 1767272399.123456
-    assert str(p.getEpochDatetime())         == "2026-01-01 12:59:59.123456"
+    assert str(p.getEpochDatetime())    == "2026-01-01 12:59:59.123456"
     assert p.getCurrentUnix()           == 1767272399.123456
     assert str(p.getCurrentDatetime())  == "2026-01-01 12:59:59.123456"
 
     simulateProgress(p, 1_000)
 
     assert p.getEpoch()                 == 1767272399.123456
-    assert str(p.getEpochDatetime())         == "2026-01-01 12:59:59.123456"
+    assert str(p.getEpochDatetime())    == "2026-01-01 12:59:59.123456"
     assert p.getCurrentUnix()           == 1767272399.123456 + 1000
     assert str(p.getCurrentDatetime())  == "2026-01-01 13:16:39.123456"
