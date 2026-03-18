@@ -194,6 +194,14 @@ class Vector:
         self.y = vy + q.w * ty + (q.z * tx - q.x * tz)
         self.z = vz + q.w * tz + (q.x * ty - q.y * tx)
         return self
+    def applyEuler(self, e):
+        '''
+        applies the given euler sequence rotation to this vector
+        overwrites existing vector with result
+        '''
+        q = Quaternion().setFromEuler(e)
+        self.applyQuaternion(q)
+        return self
 
     def mag2(self): return self.x*self.x + self.y*self.y + self.z*self.z
     def mag(self): return math.sqrt(self.mag2())
@@ -488,9 +496,17 @@ class Quaternion:
         self.y = y
         self.z = z
         return self
+    def dot(self, other):
+        '''
+        quaternion dot product
+        returns a scalar
+        '''
+        if not isinstance(other, Quaternion):
+            raise TypeError("Operand must be a Quaternion")
+        return self.x*other.x + self.y*other.y + self.z*other.z + self.w*other.w
     def diff(self, other):
         '''
-        quataernion difference or error 
+        quaternion difference or error 
         solves for qOut in qSelf = qInput ​⊗ qOut
         '''
         if not isinstance(other, Quaternion):
@@ -498,7 +514,7 @@ class Quaternion:
         return (other.conjugate() * self).normalize()
     def diff2(self, other):
         '''
-        quataernion difference or error 
+        quaternion difference or error 
         solves for qOut in qSelf = qOut ​⊗ qInput
         '''
         if not isinstance(other, Quaternion):
@@ -527,6 +543,13 @@ class Quaternion:
         self.y *= -1
         self.z *= -1
         return self
+    def angleTo(self, other):
+        '''
+        qngle between this quaternion and the other one
+        '''
+        if not isinstance(other, Quaternion):
+            raise TypeError("Operand must be a Quaternion")
+        return 2 * math.acos( abs( clamp(self.dot(other), -1, 1) ))
 
     def mag2(self): return self.w*self.w + self.x*self.x + self.y*self.y + self.z*self.z
     def mag(self): return math.sqrt(self.mag2())
@@ -579,8 +602,185 @@ class Quaternion:
         self.y = axis.y * s
         self.z = axis.z * s
         return self
+    def setFromEuler(self, euler):
+        '''
+        sets this quaternion for given euler sequence rotation
+        '''
+        cos = math.cos
+        sin = math.sin
+        c1  = cos(euler.x*0.5)
+        c2  = cos(euler.y*0.5)
+        c3  = cos(euler.z*0.5)
+        s1  = sin(euler.x*0.5)
+        s2  = sin(euler.y*0.5)
+        s3  = sin(euler.z*0.5)
+        
+        match(euler.getOrder()):
+            case 'XYZ':
+                self.x = s1 * c2 * c3 + c1 * s2 * s3
+                self.y = c1 * s2 * c3 - s1 * c2 * s3
+                self.z = c1 * c2 * s3 + s1 * s2 * c3
+                self.w = c1 * c2 * c3 - s1 * s2 * s3
+            case 'YXZ':
+                self.x = s1 * c2 * c3 + c1 * s2 * s3
+                self.y = c1 * s2 * c3 - s1 * c2 * s3
+                self.z = c1 * c2 * s3 - s1 * s2 * c3
+                self.w = c1 * c2 * c3 + s1 * s2 * s3
+            case 'ZXY':
+                self.x = s1 * c2 * c3 - c1 * s2 * s3
+                self.y = c1 * s2 * c3 + s1 * c2 * s3
+                self.z = c1 * c2 * s3 + s1 * s2 * c3
+                self.w = c1 * c2 * c3 - s1 * s2 * s3
+            case 'ZYX':
+                self.x = s1 * c2 * c3 - c1 * s2 * s3
+                self.y = c1 * s2 * c3 + s1 * c2 * s3
+                self.z = c1 * c2 * s3 - s1 * s2 * c3
+                self.w = c1 * c2 * c3 + s1 * s2 * s3
+            case 'YZX':
+                self.x = s1 * c2 * c3 + c1 * s2 * s3
+                self.y = c1 * s2 * c3 + s1 * c2 * s3
+                self.z = c1 * c2 * s3 - s1 * s2 * c3
+                self.w = c1 * c2 * c3 - s1 * s2 * s3
+            case 'XZY':
+                self.x = s1 * c2 * c3 - c1 * s2 * s3
+                self.y = c1 * s2 * c3 - s1 * c2 * s3
+                self.z = c1 * c2 * s3 + s1 * s2 * c3
+                self.w = c1 * c2 * c3 + s1 * s2 * s3
+            case _:
+                raise ValueError("Euler order sequence is invalid")
+        return self
 
     magnitude = mag
+    __str__ = __repr__
+
+class Euler:
+    __slots__ = ("x", "y", "z", "__order")
+    def __init__(self, x=0.0, y=0.0, z=0.0, order = 'XYZ'):
+        '''initialize an euler angles sequence rotation'''
+        self.x = float(x)
+        self.y = float(y)
+        self.z = float(z)
+        self.__order = order
+
+    def __repr__(self): return f'Euler({self.x}, {self.y}, {self.z}, {self.__order})'
+    
+    def __getitem__(self, item):
+        if item == 0 : return self.x
+        if item == 1 : return self.y
+        if item == 2 : return self.z
+        raise IndexError("There are only three elements in the euler")
+    def __eq__(self, other):
+        if not isinstance(other, Euler):
+            return NotImplemented
+        return self.x == other.x and self.y == other.y and self.z == other.z
+    def __len__(self): return 3
+    def __iter__(self):
+        yield self.x
+        yield self.y
+        yield self.z
+
+    def getOrder(self): return self.__order
+    def setFromQuaternion(self, q, order=None):
+        """
+        Set this Euler from a unit quaternion.
+
+        Assumes the same intrinsic Tait-Bryan convention as setFromEuler().
+        Overwrites this Euler in-place.
+        """
+        if not isinstance(q, Quaternion):
+            raise TypeError("Operand must be a Quaternion")
+        if abs(q.mag2() - 1.0) > ZERO:
+            raise ValueError("Quaternion must be a unit Quaternion")
+
+        if order is not None:
+            self.__order = order
+
+        x = q.x
+        y = q.y
+        z = q.z
+        w = q.w
+
+        # rotation matrix elements from quaternion
+        xx = x * x
+        yy = y * y
+        zz = z * z
+        xy = x * y
+        xz = x * z
+        yz = y * z
+        wx = w * x
+        wy = w * y
+        wz = w * z
+
+        m11 = 1.0 - 2.0 * (yy + zz)
+        m12 = 2.0 * (xy - wz)
+        m13 = 2.0 * (xz + wy)
+
+        m21 = 2.0 * (xy + wz)
+        m22 = 1.0 - 2.0 * (xx + zz)
+        m23 = 2.0 * (yz - wx)
+
+        m31 = 2.0 * (xz - wy)
+        m32 = 2.0 * (yz + wx)
+        m33 = 1.0 - 2.0 * (xx + yy)
+
+        eps = 1.0 - 1e-12
+        asin = math.asin
+        atan2 = math.atan2
+
+        match self.__order:
+            case 'XYZ':
+                self.y = asin(clamp(m13, -1.0, 1.0))
+                if abs(m13) < eps:
+                    self.x = atan2(-m23, m33)
+                    self.z = atan2(-m12, m11)
+                else:
+                    self.x = atan2(m32, m22)
+                    self.z = 0.0
+            case 'YXZ':
+                self.x = asin(-clamp(m23, -1.0, 1.0))
+                if abs(m23) < eps:
+                    self.y = atan2(m13, m33)
+                    self.z = atan2(m21, m22)
+                else:
+                    self.y = atan2(-m31, m11)
+                    self.z = 0.0
+            case 'ZXY':
+                self.x = asin(clamp(m32, -1.0, 1.0))
+                if abs(m32) < eps:
+                    self.y = atan2(-m31, m33)
+                    self.z = atan2(-m12, m22)
+                else:
+                    self.y = 0.0
+                    self.z = atan2(m21, m11)
+            case 'ZYX':
+                self.y = asin(-clamp(m31, -1.0, 1.0))
+                if abs(m31) < eps:
+                    self.x = atan2(m32, m33)
+                    self.z = atan2(m21, m11)
+                else:
+                    self.x = 0.0
+                    self.z = atan2(-m12, m22)
+            case 'YZX':
+                self.z = asin(clamp(m21, -1.0, 1.0))
+                if abs(m21) < eps:
+                    self.x = atan2(-m23, m22)
+                    self.y = atan2(-m31, m11)
+                else:
+                    self.x = 0.0
+                    self.y = atan2(m13, m33)
+            case 'XZY':
+                self.z = asin(-clamp(m12, -1.0, 1.0))
+                if abs(m12) < eps:
+                    self.x = atan2(m32, m22)
+                    self.y = atan2(m13, m11)
+                else:
+                    self.x = atan2(-m23, m33)
+                    self.y = 0.0
+            case _:
+                raise ValueError("Euler order sequence is invalid")
+
+        return self
+
     __str__ = __repr__
 
 class State:
@@ -1034,13 +1234,6 @@ class Planet:
 
 #### functions
 
-def quaternionDerivative(omega: Vector, quat: Quaternion):
-    qdotW =       0*quat.w - omega.x*quat.x - omega.y*quat.y - omega.z*quat.z
-    qdotX = omega.x*quat.w +       0*quat.x + omega.z*quat.y - omega.y*quat.z
-    qdotY = omega.y*quat.w - omega.z*quat.x +       0*quat.y + omega.x*quat.z
-    qdotZ = omega.z*quat.w + omega.y*quat.x - omega.x*quat.y +       0*quat.z
-    return Quaternion( qdotW/2, qdotX/2, qdotY/2, qdotZ/2 )
-
 def checkFUNC(func, *args, **kwargs):
     try:
         func(*args, **kwargs)
@@ -1110,3 +1303,6 @@ def simulate(system: Planet, timeEnd, timeStep=1/4):
 
     while(system.time < timeEnd):
         system.step(timeStep)
+
+def clamp(v, lo, hi):
+    return lo if v < lo else hi if v > hi else v
