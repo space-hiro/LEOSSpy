@@ -1172,3 +1172,187 @@ def test_PLANET_DATETIME_BEFORE_AFTER():
     assert str(p.getEpochDatetime())    == "2026-01-01 12:59:59.123456"
     assert p.getCurrentUnix()           == 1767272399.123456 + 1000
     assert str(p.getCurrentDatetime())  == "2026-01-01 13:16:39.123456"
+
+def test_EULER_SET_FROM_QUATERNION_IDENTITY():
+    q = Quaternion(1, 0, 0, 0)
+    e = Euler(order='XYZ').setFromQuaternion(q)
+
+    assert e.x == pytest.approx(0.0)
+    assert e.y == pytest.approx(0.0)
+    assert e.z == pytest.approx(0.0)
+
+def test_EULER_SET_FROM_QUATERNION_TYPE_ERROR():
+    e = Euler()
+    with pytest.raises(TypeError):
+        e.setFromQuaternion(1)
+
+def test_EULER_SET_FROM_QUATERNION_NONUNIT_ERROR():
+    e = Euler()
+    q = Quaternion(2, 0, 0, 0)
+    with pytest.raises(ValueError):
+        e.setFromQuaternion(q)
+
+def test_EULER_QUATERNION_ROUNDTRIP():
+    e1 = Euler(0.2, -0.3, 0.4, 'ZYX')
+    q = Quaternion().setFromEuler(e1)
+    e2 = Euler(order='ZYX').setFromQuaternion(q)
+    q2 = Quaternion().setFromEuler(e2)
+
+    assert q2.w == pytest.approx(q.w, abs=1e-12)
+    assert q2.x == pytest.approx(q.x, abs=1e-12)
+    assert q2.y == pytest.approx(q.y, abs=1e-12)
+    assert q2.z == pytest.approx(q.z, abs=1e-12)
+
+def test_EULER_APPLY_ROTATIONS_XYZ():
+    euler   = Euler(math.pi/2, math.pi/2, math.pi/2, order='XYZ')
+    xaxis   = Vector(1, 0, 0)
+    yaxis   = Vector(0, 1, 0)
+    zaxis   = Vector(0, 0, 1)
+    x1      = Vector(1, 1, 1)
+    x2      = Vector().copy(x1)
+    x3      = Vector().copy(x1)
+
+    x1.applyQuaternion(Quaternion().setFromEuler(euler))
+
+    #### sequenced rotations
+    q  = Quaternion().setFromAxisAngle(xaxis, math.pi/2)
+    qA = Quaternion().setFromAxisAngle(yaxis, math.pi/2)
+    qB = Quaternion().setFromAxisAngle(zaxis, math.pi/2)
+    q.mul(qA).mul(qB)
+    x2.applyQuaternion(q)
+
+    x3.applyEuler(euler)
+
+    assert x1 == x2 == x3
+    assert q.diff(Quaternion().setFromEuler(euler)) == Quaternion()
+    assert q.angleTo(Quaternion().setFromEuler(euler)) == 0.0
+
+def test_EULER_APPLY_ROTATIONS_XZY():
+    euler   = Euler(math.pi/2, math.pi/2, math.pi/2, order='XZY')
+    xaxis   = Vector(1, 0, 0)
+    yaxis   = Vector(0, 1, 0)
+    zaxis   = Vector(0, 0, 1)
+    x1      = Vector(1, 1, 1)
+    x2      = Vector().copy(x1)
+    x3      = Vector().copy(x1)
+
+    x1.applyQuaternion(Quaternion().setFromEuler(euler))
+
+    #### sequenced rotations
+    q  = Quaternion().setFromAxisAngle(xaxis, math.pi/2)
+    qA = Quaternion().setFromAxisAngle(zaxis, math.pi/2)
+    qB = Quaternion().setFromAxisAngle(yaxis, math.pi/2)
+    q.mul(qA).mul(qB)
+    x2.applyQuaternion(q)
+
+    x3.applyEuler(euler)
+
+    assert x1 == x2 == x3
+    assert q.diff(Quaternion().setFromEuler(euler)) == Quaternion()
+    assert q.angleTo(Quaternion().setFromEuler(euler)) == 0.0
+
+def test_EULER_APPLY_ROTATIONS_YXZ():
+    euler   = Euler(math.pi/2, math.pi/2, math.pi/2, order='YXZ')
+    xaxis   = Vector(1, 0, 0)
+    yaxis   = Vector(0, 1, 0)
+    zaxis   = Vector(0, 0, 1)
+    x1      = Vector(1, 1, 1)
+    x2      = Vector().copy(x1)
+    x3      = Vector().copy(x1)
+
+    x1.applyQuaternion(Quaternion().setFromEuler(euler))
+
+    #### sequenced rotations
+    q  = Quaternion().setFromAxisAngle(yaxis, math.pi/2)
+    qA = Quaternion().setFromAxisAngle(xaxis, math.pi/2)
+    qB = Quaternion().setFromAxisAngle(zaxis, math.pi/2)
+    q.mul(qA).mul(qB)
+    x2.applyQuaternion(q)
+
+    x3.applyEuler(euler)
+
+    assert x1 == x2 == x3
+    assert q.diff(Quaternion().setFromEuler(euler)) == Quaternion()
+    assert q.angleTo(Quaternion().setFromEuler(euler)) == 0.0
+
+def test_EULER_APPLY_ROTATIONS_YZX():
+    euler   = Euler(math.pi/2, math.pi/2, math.pi/2, order='YZX')
+    xaxis   = Vector(1, 0, 0)
+    yaxis   = Vector(0, 1, 0)
+    zaxis   = Vector(0, 0, 1)
+    x1      = Vector(1, 1, 1)
+    x2      = Vector().copy(x1)
+    x3      = Vector().copy(x1)
+
+    x1.applyQuaternion(Quaternion().setFromEuler(euler))
+
+    #### sequenced rotations
+    q  = Quaternion().setFromAxisAngle(yaxis, math.pi/2)
+    qA = Quaternion().setFromAxisAngle(zaxis, math.pi/2)
+    qB = Quaternion().setFromAxisAngle(xaxis, math.pi/2)
+    q.mul(qA).mul(qB)
+    x2.applyQuaternion(q)
+
+    x3.applyEuler(euler)
+
+    assert x1 == x2 == x3
+    assert q.diff(Quaternion().setFromEuler(euler)) == Quaternion()
+    assert q.angleTo(Quaternion().setFromEuler(euler)) == 0.0
+
+def test_EULER_APPLY_ROTATIONS_ZYX():
+    euler   = Euler(math.pi/2, math.pi/2, math.pi/2, order='ZYX')
+    xaxis   = Vector(1, 0, 0)
+    yaxis   = Vector(0, 1, 0)
+    zaxis   = Vector(0, 0, 1)
+    x1      = Vector(1, 1, 1)
+    x2      = Vector().copy(x1)
+    x3      = Vector().copy(x1)
+
+    x1.applyQuaternion(Quaternion().setFromEuler(euler))
+
+    #### sequenced rotations
+    q  = Quaternion().setFromAxisAngle(zaxis, math.pi/2)
+    qA = Quaternion().setFromAxisAngle(yaxis, math.pi/2)
+    qB = Quaternion().setFromAxisAngle(xaxis, math.pi/2)
+    q.mul(qA).mul(qB)
+    x2.applyQuaternion(q)
+
+    x3.applyEuler(euler)
+
+    assert x1 == x2 == x3
+    assert q.diff(Quaternion().setFromEuler(euler)) == Quaternion()
+    assert q.angleTo(Quaternion().setFromEuler(euler)) == 0.0
+
+def test_EULER_APPLY_ROTATIONS_ZXY():
+    euler   = Euler(math.pi/2, math.pi/2, math.pi/2, order='ZXY')
+    xaxis   = Vector(1, 0, 0)
+    yaxis   = Vector(0, 1, 0)
+    zaxis   = Vector(0, 0, 1)
+    x1      = Vector(1, 1, 1)
+    x2      = Vector().copy(x1)
+    x3      = Vector().copy(x1)
+
+    x1.applyQuaternion(Quaternion().setFromEuler(euler))
+
+    #### sequenced rotations
+    q  = Quaternion().setFromAxisAngle(zaxis, math.pi/2)
+    qA = Quaternion().setFromAxisAngle(xaxis, math.pi/2)
+    qB = Quaternion().setFromAxisAngle(yaxis, math.pi/2)
+    q.mul(qA).mul(qB)
+    x2.applyQuaternion(q)
+
+    x3.applyEuler(euler)
+
+    assert x1 == x2 == x3
+    assert q.diff(Quaternion().setFromEuler(euler)) == Quaternion()
+    assert q.angleTo(Quaternion().setFromEuler(euler)) == 0.0
+
+def test_QUATERNION_ANGLETO():
+    q = Quaternion().setFromAxisAngle(Vector(1,0,0),math.pi/2)
+    assert Quaternion().angleTo(q) == pytest.approx(math.pi/2)
+
+    q = Quaternion().setFromAxisAngle(Vector(0,1,0),math.pi/3)
+    assert Quaternion().angleTo(q) == pytest.approx(math.pi/3)
+
+    q = Quaternion().setFromAxisAngle(Vector(0,0,1),math.pi/4)
+    assert Quaternion().angleTo(q) == pytest.approx(math.pi/4)
