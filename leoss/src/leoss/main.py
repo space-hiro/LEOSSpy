@@ -1203,19 +1203,14 @@ class Planet:
     def setEpoch(self, year=0, month=0, day=0, hour=0, minute=0, second=0, microsecond=0):     
         datetime_utc = datetime(year, month, day, hour, minute, second, microsecond, tzinfo=timezone.utc)
         self.__unix = datetime_utc.timestamp()
-
     def setEpochFromDatetime(self, dt: datetime):
         self.__unix = dt.timestamp()
-
     def getEpoch(self):
         return self.__unix
-    
     def getEpochDatetime(self):
         return datetime.fromtimestamp(self.__unix)
-    
     def getCurrentUnix(self):
         return self.__unix + self.time
-    
     def getCurrentDatetime(self):
         return datetime.fromtimestamp(self.__unix + self.time)
 
@@ -1223,16 +1218,14 @@ class Planet:
         spacecraft = Spacecraft(name)
         self.spacecraftObjects[name] = spacecraft
         spacecraft.planet = self
-
+    def getSpacecrafts(self):
+        return self.spacecraftObjects
+    
     def step(self, deltaTime):
         for spacecraft in self.spacecraftObjects.values():
             runggeKutta4(spacecraft.derivative, spacecraft.state, self.time, deltaTime)
             spacecraft.updateRECORD(deltaTime)
         self.time += deltaTime
-
-    def getSpacecrafts(self):
-        return self.spacecraftObjects
-    
     def INIT(self):
         for spacecraft in self.spacecraftObjects.values():
             spacecraft.addFORCE(self.gravity, "GRAVITY_2BODY")
