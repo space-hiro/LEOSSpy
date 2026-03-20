@@ -976,6 +976,11 @@ class Spacecraft:
         if not isinstance(mass, (int, float)):
             raise TypeError("Operance should be int or float")
         self.state.mass = float(mass)
+    def setsize(self, vector):
+        if isinstance(vector, Vector):
+            self.size.copy(vector)
+        else:
+            raise TypeError("Operand should be a Vector")
     def setposition(self, vector):
         if isinstance(vector, Vector):
             self.state.pos.copy(vector)
