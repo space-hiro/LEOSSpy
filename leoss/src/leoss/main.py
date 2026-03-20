@@ -1052,6 +1052,8 @@ class Spacecraft:
             print(f"WARNING: input does not return Vector, addFORCE failed.")
             return False
 
+        if desc in self.__forceFUNC:
+            print(f"WARNING: input force name already exists, func overwritten")
         self.__forceFUNC[desc] = func
         return True
     
@@ -1074,6 +1076,8 @@ class Spacecraft:
             print(f"WARNING: input does not return Vector, addTORQUE failed.")
             return False
         
+        if desc in self.__torqueFUNC:
+            print(f"WARNING: input torque name already exists, func overwritten")
         self.__torqueFUNC[desc] = func
         return True
     
@@ -1096,6 +1100,8 @@ class Spacecraft:
             print(f"WARNING: input does not return Vector, addMOMENTUM failed.")
             return False
         
+        if desc in self.__momentumFUNC:
+            print(f"WARNING: input momentum name already exists, func overwritten")
         self.__momentumFUNC[desc] = func
         return True
 

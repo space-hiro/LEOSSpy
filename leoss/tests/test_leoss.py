@@ -1356,3 +1356,23 @@ def test_QUATERNION_ANGLETO():
 
     q = Quaternion().setFromAxisAngle(Vector(0,0,1),math.pi/4)
     assert Quaternion().angleTo(q) == pytest.approx(math.pi/4)
+
+def test_SPACECRAFT_ADDFUNC_OVERWRITE():
+
+    sc = Spacecraft("SC")
+
+    def torque(state, time):
+        return Vector(0, 1, 0)
+
+    def momentum(state, time):
+        return Vector(0, 0, 2)
+    
+    def force(state, time):
+        return Vector(3, 0, 2)
+
+    assert sc.addFORCE(force, "F") is True
+    assert sc.addTORQUE(torque, "T") is True
+    assert sc.addMOMENTUM(momentum, "H") is True
+    assert sc.addFORCE(force, "F") is True
+    assert sc.addTORQUE(torque, "T") is True
+    assert sc.addMOMENTUM(momentum, "H") is True
