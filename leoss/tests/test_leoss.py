@@ -1376,3 +1376,88 @@ def test_SPACECRAFT_ADDFUNC_OVERWRITE():
     assert sc.addFORCE(force, "F") is True
     assert sc.addTORQUE(torque, "T") is True
     assert sc.addMOMENTUM(momentum, "H") is True
+
+def test_SPACECRAFT_ADD_CUSTOM_VALID():
+
+    sc = Spacecraft("SC")
+
+    def constant_force(sc, state, time):
+        return Vector(1, 0, 0)
+
+    assert sc.addCUSTOM(constant_force, "F") is True
+    
+def test_SPACECRAFT_ADD_CUSTOM_INVALID_SIGNATURE():
+    sc = Spacecraft("SC")
+
+    def bad_force(state):
+        return Vector(1, 0, 0)
+
+    assert sc.addCUSTOM(bad_force, "BAD") is False
+
+def test_SPACECRAFT_ADD_CUSTOM_INVALID_RETURN():
+    sc = Spacecraft("SC")
+
+    def bad_force(sc, state, time):
+        return ""
+
+    assert sc.addCUSTOM(bad_force, "BAD") is False
+
+def test_SPACECRAFT_COMPUTE_CUSTOM():
+    sc = Spacecraft("SC")
+    sc.state.mass = 2.0
+    sc.state.omega = Vector(1, 2, 3)
+    sc.inertia = Matrix(
+        Vector(2, 0, 0),
+        Vector(0, 3, 0),
+        Vector(0, 0, 4),
+    )
+
+    def f1(sc, state, time):
+        return Vector(1, 2, 3)
+
+    def f2(sc, state, time):
+        return Vector(state.mass, time, 0)
+
+    sc.addCUSTOM(f1, "F1")
+    sc.addCUSTOM(f2, "F2")
+
+    sc.computeCUSTOM(sc.state, 0.0)
+
+    assert sc.FUNC['F1'] == Vector(1,2,3)
+    assert sc.FUNC['F2'] == Vector(sc.state.mass,0,0)
+
+def test_SPACECRAFT_COMPUTE_METHODS_ARE_SYNC():
+
+    system = Planet().setAs('EARTH')
+    system.addSpacecraft("MULA")
+
+    spacecrafts = system.getSpacecrafts()
+
+    MULA = spacecrafts["MULA"]
+
+    MULA.setmass(155)
+    MULA.setposition(Vector(-5.18435402e+06,4.67140733e+06,-3.33373976e+02))
+    MULA.setvelocity(Vector(0.69496868e3,0.7719583e3,7.4857076e3))
+    MULA.setbodyrate(Vector(10,10,10))
+    MULA.inertia = Matrix(Vector(18.5,0.97,0.97),Vector(0.97,20.0,1.12),Vector(0.97,1.12,17.2))
+
+    def Gyro(sc: Spacecraft, st: State, t):
+        out = Vector().zero()
+        out.copy(st.omega)
+        return out
+
+    MULA.addCUSTOM(Gyro, 'Gyroscope')
+
+    simulate(system, 100, 1/8)
+    df = pd.DataFrame.from_dict(MULA.getRECORD())
+    GyroData        = [ item for item in df['Gyroscope'] ]
+    Bodyrates       = [ item for item in df['Bodyrate'].values.tolist()[:] ]
+    AngularMomentum = [ item for item in df['BodyAngularMomentum'] ]
+    NetMoment       = [ item.mag() for item in df['NetMomentum'].values.tolist()[:] ]
+
+    assert GyroData[0]  == Bodyrates[0]
+    assert GyroData[1]  == Bodyrates[1]
+    assert GyroData[-1] == Bodyrates[-1]
+    assert NetMoment[0] == AngularMomentum[0]
+    assert NetMoment[1] == AngularMomentum[1]
+    assert NetMoment[-1] == AngularMomentum[-1] 

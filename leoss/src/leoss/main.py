@@ -2,7 +2,9 @@ import math
 import inspect
 import time as clock
 from datetime import datetime, timezone
+
 from tqdm import tqdm
+import pandas as pd
 
 #### globals
 
@@ -939,10 +941,12 @@ class Spacecraft:
         "netFORCE",
         "netTORQUE",
         "netMOMENTUM",
+        "FUNC",
         "planet",
         "__forceFUNC",
         "__torqueFUNC",
         "__momentumFUNC",
+        "__customFUNC",
         "__stateRECORD"
     )
 
@@ -955,12 +959,14 @@ class Spacecraft:
         self.netFORCE    = Vector()
         self.netTORQUE   = Vector()
         self.netMOMENTUM = Vector()
+        self.FUNC = {}
 
         self.planet = None
 
         self.__forceFUNC    = {}
         self.__torqueFUNC   = {}
         self.__momentumFUNC = {}
+        self.__customFUNC   = {}
 
         self.__stateRECORD = {}
 
@@ -1005,6 +1011,7 @@ class Spacecraft:
     def derivative(self, state:State, time, dstate:State):
 
         self.computeEXTERNAL(state, time)
+        self.computeCUSTOM(state, time)
 
         dstate.mass  = 0
 
@@ -1032,6 +1039,11 @@ class Spacecraft:
 
         for moment in self.__momentumFUNC.values():
             self.netMOMENTUM.add(moment(state, time))
+
+    def computeCUSTOM(self, state:State, time):
+        self.FUNC.clear()
+        for name, func in self.__customFUNC.items():
+            self.FUNC[name] = func(self, state, time)
 
     def addFORCE(self, func, desc='NoName'):
         if not callable(func):
@@ -1105,6 +1117,30 @@ class Spacecraft:
         self.__momentumFUNC[desc] = func
         return True
 
+    def addCUSTOM(self, func, desc='NoName'):
+        if not callable(func):
+            print(f"WARNING: input is not callable, addCUSTOM failed.")
+            return False
+        
+        sig = inspect.signature(func)
+
+        if len(sig.parameters) != 3:
+            print(f"WARNING: input must accept 3 arguments as `func(spacecraft, state, time)`, addCUSTOM failed.")
+            return False
+
+        if not checkFUNC(func, self, self.state, 0):
+            print(f"WARNING: input is not valid, addCUSTOM failed.")
+            return False
+        
+        if not isinstance(func(self, self.state, 0), (int, float, Vector, Quaternion)):
+            print(f"WARNING: input does not return any valid type, addCUSTOM failed.")
+            return False
+        
+        if desc in self.__customFUNC:
+            print(f"WARNING: input func name already exists, func overwritten")
+        self.__customFUNC[desc] = func
+        return True
+    
     def initRECORD(self):
         self.__stateRECORD['Time'] = [self.planet.time]
         #### state
@@ -1124,7 +1160,10 @@ class Spacecraft:
         self.__stateRECORD['BodyAngularMomentum'] \
             = [ (self.inertia*self.state.omega).mag() ]
         self.__stateRECORD['RotationalKineticEnergy'] \
-            = [ 0.5 * self.state.omega.dot(self.inertia*self.state.omega) ] 
+            = [ 0.5 * self.state.omega.dot(self.inertia*self.state.omega) ]
+        ### custom
+        for name in self.__customFUNC.keys():
+            self.__stateRECORD[name] = [ self.FUNC[name] ]
 
     def getRECORD(self):
         return self.__stateRECORD
@@ -1149,7 +1188,10 @@ class Spacecraft:
             .append( (self.inertia*self.state.omega).mag() )
         self.__stateRECORD['RotationalKineticEnergy'] \
             .append( 0.5 * self.state.omega.dot(self.inertia*self.state.omega) )
-        
+        ### custom
+        for name in self.__customFUNC.keys():
+            self.__stateRECORD[name].append( self.FUNC[name] )
+
     def checkConservation(self, tol=ZERO):
         OE = self.__stateRECORD['SpecificOrbitalEnergy']
         OM = self.__stateRECORD['SpecificAngularMomentum']
@@ -1174,11 +1216,11 @@ class Spacecraft:
 
 class Planet:
     __slots__ = (
-        "spacecraftObjects",
-        "time",
-        "radi",
-        "mu",
-        "__unix"
+        "spacecraftObjects",    #### dictionary of spacecraft objects
+        "time",                 #### elapsed time from __unix in seconds
+        "radi",                 #### radius in meters
+        "mu",                   #### gravitational parameter in m^3/s^2
+        "__unix"                #### time since unix epoch in seconds
     )
 
     def __init__(self):
@@ -1224,11 +1266,18 @@ class Planet:
     def step(self, deltaTime):
         for spacecraft in self.spacecraftObjects.values():
             runggeKutta4(spacecraft.derivative, spacecraft.state, self.time, deltaTime)
+
+            spacecraft.computeEXTERNAL(spacecraft.state, self.time + deltaTime)
+            spacecraft.computeCUSTOM(spacecraft.state, self.time + deltaTime)
             spacecraft.updateRECORD(deltaTime)
+
         self.time += deltaTime
     def INIT(self):
         for spacecraft in self.spacecraftObjects.values():
             spacecraft.addFORCE(self.gravity, "GRAVITY_2BODY")
+
+            spacecraft.computeEXTERNAL(spacecraft.state, self.time)
+            spacecraft.computeCUSTOM(spacecraft.state, self.time)
             spacecraft.initRECORD()
 
     def gravity(self, state, time):
@@ -1243,7 +1292,7 @@ def checkFUNC(func, *args, **kwargs):
         func(*args, **kwargs)
         return True
     except Exception as error:
-        print(f"WARNING: {error}")
+        print(f"WARNING: checkfunc, {error}")
         return False
 
 __RK4__k1   = State().zero()
