@@ -4,6 +4,7 @@ import time as clock
 from datetime import datetime, timezone
 
 from tqdm import tqdm
+import pyIGRF14 as IGRF
 import pandas as pd
 
 #### globals
@@ -558,7 +559,7 @@ class Quaternion:
 
     def rotate(self, v):
         '''
-        returns the rotated vector by this quaternion
+        returns the rotated vector (new) by this quaternion
             v' = q ⊗ (0, v) ⊗ q*
         uses a slightly faster implementation
             v' = v + 2qv × ( qv ​× v + qw v)
@@ -1011,7 +1012,7 @@ class Spacecraft:
     def derivative(self, state:State, time, dstate:State):
 
         self.computeEXTERNAL(state, time)
-        self.computeCUSTOM(state, time)
+        # self.computeCUSTOM(state, time)
 
         dstate.mass  = 0
 
@@ -1357,5 +1358,115 @@ def simulate(system: Planet, timeEnd, timeStep=1/4):
     while(system.time < timeEnd):
         system.step(timeStep)
 
-def clamp(v, lo, hi):
-    return lo if v < lo else hi if v > hi else v
+def clamp(v, lo, hi): return lo if v < lo else hi if v > hi else v
+
+def julianDay(year, month, day): return (367*year - int((7*(year + int((month+9)/12)))/4) + int(275*month/9) + day + 1_721_013.5)
+
+def greenwhichMST(year, month, day, hour, minute, second, microsecond):
+    julian_day  = julianDay(year, month, day)
+    T0          = (julian_day - 2_451_545) / 36_525
+    GMST0       = ( 100.460_618_4 + 36_000.770_04 * (T0*T0) - (2.583e-8)*(T0*T0*T0) ) % 360
+    hours       = hour + minute/60 + second/3_600 + microsecond/3_600_000_000
+    GMST        = GMST0 + 360.985_647_24 * hours/24
+    return (GMST % 360)
+
+def ned_to_ecef_Matrix(lat, lon):
+    sLat = math.sin(lat)
+    cLat = math.cos(lat)
+    sLon = math.sin(lon)
+    cLon = math.cos(lon)
+
+    # NED basis vectors expressed in ECEF
+    north = Vector(-sLat * cLon, -sLat * sLon,  cLat)
+    east  = Vector(-sLon,         cLon,          0.0)
+    down  = Vector(-cLat * cLon, -cLat * sLon, -sLat)
+
+    return Matrix(north, east, down)
+
+def ecef_to_eci_Matrix(gmst):
+    c = math.cos(gmst)
+    s = math.sin(gmst)
+
+    x_ecef_in_eci = Vector( c, s, 0.0)
+    y_ecef_in_eci = Vector(-s, c, 0.0)
+    z_ecef_in_eci = Vector(0.0, 0.0, 1.0)
+
+    return Matrix(x_ecef_in_eci, y_ecef_in_eci, z_ecef_in_eci)
+
+def __geolocation(sc: Spacecraft, st: State, time):
+    '''computes for coordinates, latitude (deg), longitude (deg) and altitude (km)'''
+    sc_dt   = sc.planet.getCurrentDatetime()
+    sc_gmst = greenwhichMST(sc_dt.year, sc_dt.month, sc_dt.day, sc_dt.hour, sc_dt.minute, sc_dt.second, sc_dt.microsecond)
+
+    position    = st.pos
+    mag         = position.mag()
+    radi        = sc.planet.radi
+
+    theta = math.acos(position.z/mag)
+    psi   = math.atan2(position.y,position.x)
+
+    latitude  = 90 - (theta*R2D)
+    longitude = psi*R2D
+    altitude  = (mag-radi)/1_000
+
+    xy = math.sqrt(position.x**2+position.y**2)
+
+    gd_theta = latitude*D2R
+    C   = 0
+    gd  = 0
+    e2  = 0.006_694_385_000
+
+    while True:
+        C   = radi/math.sqrt(1-e2*math.sin(gd_theta)*math.sin(gd_theta))
+        gd  = math.atan2(position.z+C*e2*math.sin(gd_theta),xy)
+        if abs(gd-gd_theta) < 1e-6:
+            gd_theta = gd
+            break
+        gd_theta = gd
+    
+    h_ellp = ( xy/math.cos(gd_theta) ) - C  
+    
+    altitude = h_ellp/1e3
+    latitude = gd_theta*R2D
+    gmst_ = ( sc_gmst + time*(360.985_647_24)/(24*3_600) ) % 360
+    longitude = longitude - gmst_
+
+    if longitude < 0:
+        longitude = (((longitude/360) - int(longitude/360)) * 360) + 360    
+    if longitude > 180:
+        longitude = -360 + longitude
+    
+    location = Vector(latitude, longitude, altitude)
+    return location
+
+def __geomagfield(sc: Spacecraft, st: State, time):
+    '''computes for body reference magnetic field strength'''
+    location = sc.FUNC['GlobalPosition'] if len(sc.FUNC) > 0 else Vector() 
+    lat = location.x
+    lon = location.y
+    alt = location.z
+    B_NED = IGRF.igrf_value(lat, lon, alt, 2025)[3:6]
+    B_NED = Vector().set(B_NED[0], B_NED[1], B_NED[2]).scale(1e-9)
+    
+
+    position = st.pos
+    psi      = math.atan2(position.y,position.x)
+    gmst_    = psi*R2D - lon
+
+    C_ecef_ned  = ned_to_ecef_Matrix(lat,lon)
+    C_eci_ecef  = ecef_to_eci_Matrix(gmst_ * D2R)
+    C_eci_ned   = C_eci_ecef * C_ecef_ned
+
+    B_ECI   = C_eci_ned * B_NED
+    B_BODY  = st.quat.rotate(B_ECI)
+    return B_BODY
+
+class _FuncNameSpace:
+    __slots__ = (
+        "geolocation",
+        "geomagfield",
+    )
+
+FUNC = _FuncNameSpace
+FUNC.geolocation = __geolocation
+FUNC.geomagfield = __geomagfield
