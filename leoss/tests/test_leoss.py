@@ -1460,4 +1460,4 @@ def test_SPACECRAFT_COMPUTE_METHODS_ARE_SYNC():
     assert GyroData[-1] == Bodyrates[-1]
     assert NetMoment[0] == AngularMomentum[0]
     assert NetMoment[1] == AngularMomentum[1]
-    assert NetMoment[-1] == AngularMomentum[-1] 
+    assert NetMoment[-1] == AngularMomentum[-1]
