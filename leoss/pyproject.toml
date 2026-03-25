@@ -10,7 +10,8 @@ requires-python = ">=3.13"
 dependencies = [
     "tqdm (>=4.67.3,<5.0.0)",
     "pandas (>=3.0.1,<4.0.0)",
-    "matplotlib (>=3.10.8,<4.0.0)"
+    "matplotlib (>=3.10.8,<4.0.0)",
+    "pyigrf14 (>=1.0.4,<2.0.0)",
 ]
 
 [tool.poetry]

@@ -696,6 +696,23 @@ tests = ["check-manifest", "coverage (>=7.4.2)", "defusedxml", "markdown2", "ole
 xmp = ["defusedxml"]
 
 [[package]]
+name = "pyigrf14"
+version = "1.0.4"
+description = "This is a package of IGRF-14 (International Geomagnetic Reference Field) about python version."
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "pyigrf14-1.0.4-py3-none-any.whl", hash = "sha256:95d3c03a15de090fb3e669bf4d2890a3430e69c474cb88afdd8f965a09e24d00"},
+]
+
+[package.dependencies]
+numpy = "*"
+
+[package.extras]
+test = ["goto-statement (>=1.2,<2.0)", "pytest"]
+
+[[package]]
 name = "pyparsing"
 version = "3.3.2"
 description = "pyparsing - Classes and methods to define and execute parsing grammars"
@@ -775,4 +792,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13"
-content-hash = "59114edfdd479e6c58ae6b91a0de057ecfe3347f69959655e3617dfbe671683b"
+content-hash = "61dfe6379b41ffa2da1e32fb5e134fdd7a6c1292f9d67bfb56d4f69cd9d3858f"
