@@ -942,6 +942,9 @@ class Spacecraft:
         "netFORCE",
         "netTORQUE",
         "netMOMENTUM",
+        "customFORCE",
+        "customTORQUE",
+        "customMOMENTUM",
         "FUNC",
         "planet",
         "__forceFUNC",
@@ -961,6 +964,10 @@ class Spacecraft:
         self.netTORQUE   = Vector()
         self.netMOMENTUM = Vector()
         self.FUNC = {}
+
+        self.customFORCE    = Vector()
+        self.customTORQUE   = Vector()
+        self.customMOMENTUM = Vector()
 
         self.planet = None
 
@@ -1026,11 +1033,11 @@ class Spacecraft:
         dstate.omega.copy(self.inertia.inverse()*(self.netTORQUE-state.omega.cross(self.netMOMENTUM)))
     
     def computeEXTERNAL(self, state:State, time):
-        self.netFORCE.zero()
-        self.netTORQUE.zero()
-        self.netMOMENTUM.zero()
+        self.netFORCE.copy(self.customFORCE)
+        self.netTORQUE.copy(self.customTORQUE)
+        self.netMOMENTUM.copy(self.customMOMENTUM)
 
-        self.netMOMENTUM.copy(self.inertia*state.omega)
+        self.netMOMENTUM.add(self.inertia*state.omega)
 
         for force in self.__forceFUNC.values():
             self.netFORCE.add(force(state, time))
@@ -1043,6 +1050,9 @@ class Spacecraft:
 
     def computeCUSTOM(self, state:State, time):
         self.FUNC.clear()
+        self.customFORCE.zero()
+        self.customTORQUE.zero()
+        self.customMOMENTUM.zero()
         for name, func in self.__customFUNC.items():
             self.FUNC[name] = func(self, state, time)
 
@@ -1268,8 +1278,8 @@ class Planet:
         for spacecraft in self.spacecraftObjects.values():
             runggeKutta4(spacecraft.derivative, spacecraft.state, self.time, deltaTime)
 
-            spacecraft.computeEXTERNAL(spacecraft.state, self.time + deltaTime)
             spacecraft.computeCUSTOM(spacecraft.state, self.time + deltaTime)
+            spacecraft.computeEXTERNAL(spacecraft.state, self.time + deltaTime)
             spacecraft.updateRECORD(deltaTime)
 
         self.time += deltaTime
@@ -1277,8 +1287,8 @@ class Planet:
         for spacecraft in self.spacecraftObjects.values():
             spacecraft.addFORCE(self.gravity, "GRAVITY_2BODY")
 
-            spacecraft.computeEXTERNAL(spacecraft.state, self.time)
             spacecraft.computeCUSTOM(spacecraft.state, self.time)
+            spacecraft.computeEXTERNAL(spacecraft.state, self.time)
             spacecraft.initRECORD()
 
     def gravity(self, state, time):
