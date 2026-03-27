@@ -951,6 +951,7 @@ class Spacecraft:
         "__torqueFUNC",
         "__momentumFUNC",
         "__customFUNC",
+        "__customARGS",
         "__stateRECORD"
     )
 
@@ -975,6 +976,7 @@ class Spacecraft:
         self.__torqueFUNC   = {}
         self.__momentumFUNC = {}
         self.__customFUNC   = {}
+        self.__customARGS   = {}
 
         self.__stateRECORD = {}
 
@@ -1018,8 +1020,8 @@ class Spacecraft:
 
     def derivative(self, state:State, time, dstate:State):
 
-        self.computeEXTERNAL(state, time)
         # self.computeCUSTOM(state, time)
+        self.computeEXTERNAL(state, time)
 
         dstate.mass  = 0
 
@@ -1027,8 +1029,8 @@ class Spacecraft:
 
         dstate.vel.copy(self.netFORCE).scale(1/state.mass)
         
-        # dstate.quat.copy(quaternionDerivative(state.omega, state.quat))
-        dstate.quat.copy(state.quat * Quaternion().set(0, state.omega.x, state.omega.y, state.omega.z ))
+        omega_q = Quaternion(0.0, state.omega.x, state.omega.y, state.omega.z)
+        dstate.quat.copy(state.quat).mul(omega_q).scale(0.5)
 
         dstate.omega.copy(self.inertia.inverse()*(self.netTORQUE-state.omega.cross(self.netMOMENTUM)))
     
@@ -1054,7 +1056,7 @@ class Spacecraft:
         self.customTORQUE.zero()
         self.customMOMENTUM.zero()
         for name, func in self.__customFUNC.items():
-            self.FUNC[name] = func(self, state, time)
+            self.FUNC[name] = func(self, state, time, self.__customARGS[name])
 
     def addFORCE(self, func, desc='NoName'):
         if not callable(func):
@@ -1128,28 +1130,32 @@ class Spacecraft:
         self.__momentumFUNC[desc] = func
         return True
 
-    def addCUSTOM(self, func, desc='NoName'):
+    def addCUSTOM(self, func, desc='', args=[0]):
         if not callable(func):
             print(f"WARNING: input is not callable, addCUSTOM failed.")
             return False
         
         sig = inspect.signature(func)
 
-        if len(sig.parameters) != 3:
-            print(f"WARNING: input must accept 3 arguments as `func(spacecraft, state, time)`, addCUSTOM failed.")
+        if len(sig.parameters) < 3:
+            print(sig.parameters)
+            print(f"WARNING: input must atleast accept 3 arguments as `func(spacecraft, state, time)`, addCUSTOM failed.")
             return False
 
-        if not checkFUNC(func, self, self.state, 0):
+        if not checkFUNC(func, self, self.state, 1, args):
             print(f"WARNING: input is not valid, addCUSTOM failed.")
             return False
         
-        if not isinstance(func(self, self.state, 0), (int, float, Vector, Quaternion)):
+        if not isinstance(func(self, self.state, 0, args), (int, float, Vector, Quaternion)):
             print(f"WARNING: input does not return any valid type, addCUSTOM failed.")
             return False
         
         if desc in self.__customFUNC:
             print(f"WARNING: input func name already exists, func overwritten")
+        if desc=='':
+            desc = func.__name__
         self.__customFUNC[desc] = func
+        self.__customARGS[desc] = args
         return True
     
     def initRECORD(self):
@@ -1403,7 +1409,9 @@ def ecef_to_eci_Matrix(gmst):
 
     return Matrix(x_ecef_in_eci, y_ecef_in_eci, z_ecef_in_eci)
 
-def __geolocation(sc: Spacecraft, st: State, time):
+#### built-in custom functions
+
+def __geolocation(sc: Spacecraft, st: State, time: float, args=[0]):
     '''computes for coordinates, latitude (deg), longitude (deg) and altitude (km)'''
     sc_dt   = sc.planet.getCurrentDatetime()
     sc_gmst = greenwhichMST(sc_dt.year, sc_dt.month, sc_dt.day, sc_dt.hour, sc_dt.minute, sc_dt.second, sc_dt.microsecond)
@@ -1438,8 +1446,7 @@ def __geolocation(sc: Spacecraft, st: State, time):
     
     altitude = h_ellp/1e3
     latitude = gd_theta*R2D
-    gmst_ = ( sc_gmst + time*(360.985_647_24)/(24*3_600) ) % 360
-    longitude = longitude - gmst_
+    longitude = longitude - sc_gmst
 
     if longitude < 0:
         longitude = (((longitude/360) - int(longitude/360)) * 360) + 360    
@@ -1449,34 +1456,73 @@ def __geolocation(sc: Spacecraft, st: State, time):
     location = Vector(latitude, longitude, altitude)
     return location
 
-def __geomagfield(sc: Spacecraft, st: State, time):
+def __geomagfield(sc: Spacecraft, st: State, time: float, args=[0]):
     '''computes for body reference magnetic field strength'''
     location = sc.FUNC['GlobalPosition'] if len(sc.FUNC) > 0 else Vector() 
-    lat = location.x
-    lon = location.y
-    alt = location.z
-    B_NED = IGRF.igrf_value(lat, lon, alt, 2025)[3:6]
-    B_NED = Vector().set(B_NED[0], B_NED[1], B_NED[2]).scale(1e-9)
+    lat_deg = location.x
+    lon_deg = location.y
+    alt_km  = location.z
+    B_NED   = IGRF.igrf_value(lat_deg, lon_deg, alt_km, 2026)[3:6]
+    B_NED   = Vector().set(B_NED[0], B_NED[1], B_NED[2]).scale(1e-9)
     
+    lat_rad = lat_deg * D2R
+    lon_rad = lon_deg * D2R
 
     position = st.pos
     psi      = math.atan2(position.y,position.x)
-    gmst_    = psi*R2D - lon
+    gmst_deg = psi*R2D - lon_deg
 
-    C_ecef_ned  = ned_to_ecef_Matrix(lat,lon)
-    C_eci_ecef  = ecef_to_eci_Matrix(gmst_ * D2R)
+    C_ecef_ned  = ned_to_ecef_Matrix(lat_rad, lon_rad)
+    C_eci_ecef  = ecef_to_eci_Matrix(gmst_deg * D2R)
     C_eci_ned   = C_eci_ecef * C_ecef_ned
 
     B_ECI   = C_eci_ned * B_NED
-    B_BODY  = st.quat.rotate(B_ECI)
+    B_BODY  = st.quat.conjugate().rotate(B_ECI)
     return B_BODY
+
+def __bdotcontrol(sc: Spacecraft, st: State, time: float, args=[0]):
+    control_torque = Vector()
+    control_moment = Vector()
+
+    record = sc.getRECORD()
+    if not record or len(record['Time']) < 1:
+        return control_torque.zero()
+
+    B_now = Vector().copy(sc.FUNC['GeomagField'])
+    B_prev = Vector().copy(record['GeomagField'][-1])
+
+    dt = time - record['Time'][-1]
+    if dt <= 0.0:
+        return control_torque.zero()
+
+    # finite-difference B-dot
+    B_dot = Vector().copy(B_now).sub(B_prev).scale(1.0 / dt)
+
+    # start with a much smaller gain first
+    K = args[0]
+    control_moment.copy(B_dot).scale(-K)
+
+    # Optional saturation to avoid absurd dipole commands
+    # m_max = 0.2  # A·m², example only
+    # m_mag = control_moment.mag()
+    # if m_mag > m_max and m_mag > ZERO:
+    #     control_moment.scale(m_max / m_mag)
+
+    control_torque.copy(control_moment.cross(B_now))
+    sc.customTORQUE.add(control_torque)
+    return control_torque
 
 class _FuncNameSpace:
     __slots__ = (
         "geolocation",
         "geomagfield",
+        "bdotcontrol",
     )
 
 FUNC = _FuncNameSpace
 FUNC.geolocation = __geolocation
+FUNC.geolocation.__name__ = "GlobalPosition"
 FUNC.geomagfield = __geomagfield
+FUNC.geomagfield.__name__ = "GeomagField"
+FUNC.bdotcontrol = __bdotcontrol
+FUNC.bdotcontrol.__name__ = "BdotControl"
