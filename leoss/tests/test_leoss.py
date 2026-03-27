@@ -1381,7 +1381,7 @@ def test_SPACECRAFT_ADD_CUSTOM_VALID():
 
     sc = Spacecraft("SC")
 
-    def constant_force(sc, state, time):
+    def constant_force(sc, state, time, args):
         return Vector(1, 0, 0)
 
     assert sc.addCUSTOM(constant_force, "F") is True
@@ -1412,10 +1412,10 @@ def test_SPACECRAFT_COMPUTE_CUSTOM():
         Vector(0, 0, 4),
     )
 
-    def f1(sc, state, time):
+    def f1(sc, state, time, args):
         return Vector(1, 2, 3)
 
-    def f2(sc, state, time):
+    def f2(sc, state, time, args):
         return Vector(state.mass, time, 0)
 
     sc.addCUSTOM(f1, "F1")
@@ -1441,7 +1441,7 @@ def test_SPACECRAFT_COMPUTE_METHODS_ARE_SYNC():
     MULA.setbodyrate(Vector(10,10,10))
     MULA.inertia = Matrix(Vector(18.5,0.97,0.97),Vector(0.97,20.0,1.12),Vector(0.97,1.12,17.2))
 
-    def Gyro(sc: Spacecraft, st: State, t):
+    def Gyro(sc: Spacecraft, st: State, t, args):
         out = Vector().zero()
         out.copy(st.omega)
         return out
