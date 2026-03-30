@@ -177,7 +177,7 @@ class Vector:
         return self
     def applyQuaternion(self, q):
         '''
-        applies the given quaternion rotation to this vector
+        applies the given quaternion rotation to this vector, ACTIVE rotation
         overwrites existing vector with result
         '''
         if not isinstance(q, Quaternion) or q.mag2() - 1 > ZERO:
@@ -199,7 +199,7 @@ class Vector:
         return self
     def applyEuler(self, e):
         '''
-        applies the given euler sequence rotation to this vector
+        applies the given euler sequence rotation to this vector, ACTIVE rotation
         overwrites existing vector with result
         '''
         q = Quaternion().setFromEuler(e)
@@ -305,7 +305,6 @@ class Matrix:
         self.y.copy(other.y)
         self.z.copy(other.z)
         return self
-
     def row(self, i):
         if i == 0:
             return Vector(self.x.x, self.y.x, self.z.x)
@@ -330,7 +329,6 @@ class Matrix:
             Vector(self.x.z, self.y.z, self.z.z),
         )
     def trace(self): return self.x.x + self.y.y + self.z.z
-
     def inverse(self):
         '''
         Fastest implementation for inverse matrix 'vs. np.linalg.inv()'
@@ -354,6 +352,22 @@ class Matrix:
             raise ZeroDivisionError("Matrix is singular")
         return inv / det
     
+    def setFromQuaternion(self, q):
+        '''resulting matrix represents ACTIVE ROTATION'''
+        qxqx = q.x*q.x
+        qyqy = q.y*q.y
+        qzqz = q.z*q.z
+        qwqx = q.w*q.x
+        qwqy = q.w*q.y
+        qwqz = q.w*q.z
+        qxqy = q.x*q.y
+        qxqz = q.x*q.z
+        qyqz = q.y*q.z
+        vec1 = Vector( 1-2*(qyqy+qzqz)  , 2*(qxqy+qwqz)     , -2*(qwqy+qxqz)    )
+        vec2 = Vector( 2*(qxqy-qwqz)    , 1-2*(qxqx+qzqz)   , 2*(qwqx+qyqz)     )
+        vec3 = Vector( 2*(qwqy+qxqz)    , -2*(qwqx+qyqz)    , 1-2*(qxqx+qyqy)   )
+        return Matrix(vec1, vec2, vec3)
+
     __str__ = __repr__
 
 class Quaternion:
@@ -590,7 +604,7 @@ class Quaternion:
             vy + qw * ty + (qz * tx - qx * tz),
             vz + qw * tz + (qx * ty - qy * tx),
         )
-    def setFromAxisAngle(self, axis, angle):
+    def setFromAxisAngle(self, axis: Vector, angle):
         '''
         sets this quaternion for given axis and angle
         '''
@@ -652,6 +666,34 @@ class Quaternion:
             case _:
                 raise ValueError("Euler order sequence is invalid")
         return self
+    def setFromMatrix(self, matrix: Matrix):
+        C = matrix
+        B = []
+        B.append(0.25*(1+C.trace()))
+        B.append(0.25*(1+(2*C.xx)-C.trace()))
+        B.append(0.25*(1+(2*C.yy)-C.trace()))
+        B.append(0.25*(1+(2*C.zz)-C.trace()))
+
+        BwBx = 0.25*( C.zy-C.yz )
+        BwBy = 0.25*( C.xz-C.zx )
+        BwBz = 0.25*( C.yx-C.xy )
+        ByBz = 0.25*( C.zy+C.yz )
+        BzBx = 0.25*( C.xz+C.zx )
+        BxBy = 0.25*( C.yx+C.xy )
+
+        b = [math.sqrt(item) for item in B]
+        Q = Quaternion()
+
+        if B[0] == max(B):
+            Q.set(b[0], BwBx/b[0], BwBy/b[0], BwBz/b[0])
+        if B[1] == max(B):
+            Q.set(BwBx/b[1], b[1], BxBy/b[1], BzBx/b[1])
+        if B[2] == max(B):
+            Q.set(BwBy/b[2], BxBy/b[2], b[2], ByBz/b[2])
+        if B[3] == max(B):
+            Q.set(BwBz/b[3], BzBx/b[3], ByBz/b[3], b[3])
+
+        return Q.conjugate()
 
     magnitude = mag
     __str__ = __repr__
@@ -682,6 +724,17 @@ class Euler:
         yield self.y
         yield self.z
 
+    def scale(self, s):
+        '''
+        multiply elements with scalar
+        overwrites existing euler with result
+        '''
+        if not isinstance(s, (int, float)):
+            raise TypeError("Operand must be a scalar")
+        self.x *= s
+        self.y *= s
+        self.z *= s
+        return self
     def getOrder(self): return self.__order
     def setFromQuaternion(self, q, order=None):
         """
@@ -1309,7 +1362,7 @@ def checkFUNC(func, *args, **kwargs):
         func(*args, **kwargs)
         return True
     except Exception as error:
-        print(f"WARNING: checkfunc, {error}")
+        print(f"WARNING: check>{func.__name__}, {error}")
         return False
 
 __RK4__k1   = State().zero()
@@ -1408,6 +1461,15 @@ def ecef_to_eci_Matrix(gmst):
     z_ecef_in_eci = Vector(0.0, 0.0, 1.0)
 
     return Matrix(x_ecef_in_eci, y_ecef_in_eci, z_ecef_in_eci)
+
+def eci_to_orf_Matrix(pos: Vector, vel: Vector):
+    ## z = -pos normalized
+    Z = Vector().copy(pos).normalize().scale(-1)
+    ## y = z x vel normalized
+    Y = Vector().copy(Z.cross(vel)).normalize()
+    ## x = y x z normalize
+    X = Vector().copy(Y.cross(Z)).normalize()
+    return Matrix(X,Y,Z) 
 
 #### built-in custom functions
 
