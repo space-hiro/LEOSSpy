@@ -1461,3 +1461,31 @@ def test_SPACECRAFT_COMPUTE_METHODS_ARE_SYNC():
     assert NetMoment[0] == AngularMomentum[0]
     assert NetMoment[1] == AngularMomentum[1]
     assert NetMoment[-1] == AngularMomentum[-1]
+
+def test_MATRIX_SET_FROM_QUATERNION():
+    axis = Vector(1,0,0)
+    vec  = Vector(1,1,1)
+    vec_ = Vector().copy(vec)
+    Q    = Quaternion().setFromAxisAngle(axis, math.pi/2)
+
+    vec.applyQuaternion(Q)
+    mat = Matrix().setFromQuaternion(Q)
+
+    test = vec - (mat * vec_)
+
+    assert test.mag() == pytest.approx(0.0)
+
+def test_QUATERNION_SET_FROM_MATRIX():
+    axis = Vector(1,0,0)
+    vec  = Vector(1,1,1)
+    vec_ = Vector().copy(vec)
+    Q    = Quaternion().setFromAxisAngle(axis, math.pi/2)
+
+    mat = Matrix().setFromQuaternion(Q)
+    vec.applyQuaternion(Quaternion().setFromMatrix(mat))
+
+    test = vec - (mat * vec_)
+
+    assert test.mag() == pytest.approx(0.0)
+
+
