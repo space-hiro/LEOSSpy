@@ -12,6 +12,7 @@ dependencies = [
     "pandas (>=3.0.1,<4.0.0)",
     "matplotlib (>=3.10.8,<4.0.0)",
     "pyigrf14 (>=1.0.4,<2.0.0)",
+    "websockets (>=16.0,<17.0)",
 ]
 
 [tool.poetry]
