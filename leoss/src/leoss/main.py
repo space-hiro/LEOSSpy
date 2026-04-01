@@ -1420,9 +1420,10 @@ def simulateProgress(system: Planet, timeEnd, timeStep=1/4):
     t1 = clock.time()
     print("\nElapsed Time:\t"+str(t1-t0)+" sec.")
 
-def simulate(system: Planet, timeEnd, timeStep=1/4):
+def simulate(system: Planet, timeEnd, timeStep=1/4, init = True):
     ## system init
-    system.INIT()
+    if (init):
+        system.INIT()
 
     while(system.time < timeEnd):
         system.step(timeStep)
