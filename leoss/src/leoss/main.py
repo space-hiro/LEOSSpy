@@ -473,6 +473,30 @@ class Quaternion:
             self.z - other.z
         )
     def __mul__(self, other):
+        '''
+        Quaternion multiplication using the Hamilton product.
+
+        Convention:
+            Quaternions represent PASSIVE frame transformations.
+
+            Let q_BA represent the rotation from frame A -> frame B, so that:
+                v_B = q_BA^{-1} ⊗ v_A ⊗ q_BA
+
+        Composition:
+            If q_BA transforms A -> B
+            and q_CB transforms B -> C
+
+            then:
+                q_CA = q_CB ⊗ q_BA
+
+        In other words:
+            q2 * q1 means "apply q1 first, then q2".
+
+        Notes:
+            - Quaternion multiplication is not commutative.
+            - For unit quaternions, the product is also a unit quaternion
+            up to floating-point roundoff.
+        '''
         if isinstance(other, Quaternion):
             return Quaternion(
                 self.w*other.w - self.x*other.x - self.y*other.y - self.z*other.z,
@@ -555,9 +579,33 @@ class Quaternion:
         return self
     def mul(self, other):
         '''
-        multiply with another quaternion
-        qOut = qSelf ⊗ qInput
-        overwrites existing quaternion with result
+        In-place quaternion multiplication using the Hamilton product.
+
+        Operation:
+            self ← self ⊗ other
+
+        Convention (PASSIVE frame transforms):
+            Let q_BA represent the rotation from frame A -> frame B.
+
+        Composition:
+            If:
+                q_BA transforms A -> B
+                q_CB transforms B -> C
+
+            then:
+                q_CA = q_CB ⊗ q_BA
+
+        Therefore:
+            To compose transforms in sequence (A -> B -> C), use:
+                q_CB.mul(q_BA)
+
+            meaning:
+                apply q_BA first, then q_CB
+
+        Notes:
+            - Quaternion multiplication is not commutative.
+            - Order matters.
+            - Result may need normalization after repeated operations.
         '''
         if not isinstance(other, Quaternion):
             raise TypeError("Operand must be a Quaternion")
@@ -573,7 +621,7 @@ class Quaternion:
     def dot(self, other):
         '''
         quaternion dot product
-        returns a scalar
+        returns a SCALAR
         '''
         if not isinstance(other, Quaternion):
             raise TypeError("Operand must be a Quaternion")
