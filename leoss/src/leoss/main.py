@@ -148,6 +148,7 @@ class Vector:
     def dot(self, other):
         '''
         dot product with another vector
+        returns a SCALAR
         '''
         if not isinstance(other, Vector):
             raise TypeError("Operand must be a Vector")
@@ -155,6 +156,7 @@ class Vector:
     def cross(self, other):
         '''
         cross product with another vector
+        returns a NEW vector
         '''
         if not isinstance(other, Vector):
             raise TypeError("Operand must be a Vector")
@@ -177,8 +179,27 @@ class Vector:
         return self
     def applyQuaternion(self, q):
         '''
-        applies the given quaternion rotation to this vector, ACTIVE rotation
-        overwrites existing vector with result
+        Applies a quaternion as a PASSIVE rotation (frame transformation).
+        The results overwrite the existing vector.
+
+        Definition:
+            Let q_BA represent the rotation from frame A → frame B.
+
+        Then this operation assumes:
+            - the current vector is expressed in frame A
+            - the result will be expressed in frame B
+
+        Mathematically:
+            v_B = q_BA^{-1} ⊗ v_A ⊗ q_BA
+
+        Equivalent to:
+            v_B = T_BA @ v_A
+            where T_BA is the transformation matrix corresponding to q_BA
+
+        Notes:
+            - This is a passive transformation (change of coordinates),
+            not an active rotation of a physical vector.
+            - q must be a unit quaternion.
         '''
         if not isinstance(q, Quaternion) or q.mag2() - 1 > ZERO:
             raise TypeError("Operand must a unit Quaternion")
@@ -192,10 +213,11 @@ class Vector:
         ty = 2.0 * (q.z * vx - q.x * vz)
         tz = 2.0 * (q.x * vy - q.y * vx)
 
-        # v' = v + qw * t + (qv x t)
-        self.x = vx + q.w * tx + (q.y * tz - q.z * ty)
-        self.y = vy + q.w * ty + (q.z * tx - q.x * tz)
-        self.z = vz + q.w * tz + (q.x * ty - q.y * tx)
+        # active form:  v' = v + qw * t + (qv x t)
+        # passive form: v' = v - qw * t + (qv x t)
+        self.x = vx - q.w * tx + (q.y * tz - q.z * ty)
+        self.y = vy - q.w * ty + (q.z * tx - q.x * tz)
+        self.z = vz - q.w * tz + (q.x * ty - q.y * tx)
         return self
     def applyEuler(self, e):
         '''
