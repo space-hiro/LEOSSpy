@@ -375,20 +375,52 @@ class Matrix:
         return inv / det
     
     def setFromQuaternion(self, q):
-        '''resulting matrix represents ACTIVE ROTATION'''
-        qxqx = q.x*q.x
-        qyqy = q.y*q.y
-        qzqz = q.z*q.z
-        qwqx = q.w*q.x
-        qwqy = q.w*q.y
-        qwqz = q.w*q.z
-        qxqy = q.x*q.y
-        qxqz = q.x*q.z
-        qyqz = q.y*q.z
-        vec1 = Vector( 1-2*(qyqy+qzqz)  , 2*(qxqy+qwqz)     , -2*(qwqy+qxqz)    )
-        vec2 = Vector( 2*(qxqy-qwqz)    , 1-2*(qxqx+qzqz)   , 2*(qwqx+qyqz)     )
-        vec3 = Vector( 2*(qwqy+qxqz)    , -2*(qwqx+qyqz)    , 1-2*(qxqx+qyqy)   )
-        return Matrix(vec1, vec2, vec3)
+        '''
+        Constructs the passive frame transformation matrix from a unit quaternion.
+
+        Storage convention:
+            self.x, self.y, self.z are COLUMN vectors
+
+        Definition:
+            Let q_BA represent the rotation from frame A -> frame B.
+
+        Then:
+            v_B = R_BA @ v_A
+
+        Equivalent quaternion form:
+            v_B = q_BA^{-1} ⊗ v_A ⊗ q_BA
+        '''
+        if not isinstance(q, Quaternion) or abs(q.mag2() - 1.0) > ZERO:
+            raise TypeError("Operand must be a unit Quaternion")
+
+        x, y, z, w = q.x, q.y, q.z, q.w
+
+        xx = x * x
+        yy = y * y
+        zz = z * z
+        wx = w * x
+        wy = w * y
+        wz = w * z
+        xy = x * y
+        xz = x * z
+        yz = y * z
+
+        # First COLUMN
+        self.x.x = 1.0 - 2.0 * (yy + zz)
+        self.x.y = 2.0 * (xy - wz)
+        self.x.z = 2.0 * (xz + wy)
+
+        # Second COLUMN
+        self.y.x = 2.0 * (xy + wz)
+        self.y.y = 1.0 - 2.0 * (xx + zz)
+        self.y.z = 2.0 * (yz - wx)
+
+        # Third COLUMN
+        self.z.x = 2.0 * (xz - wy)
+        self.z.y = 2.0 * (yz + wx)
+        self.z.z = 1.0 - 2.0 * (xx + yy)
+
+        return self
 
     __str__ = __repr__
 
