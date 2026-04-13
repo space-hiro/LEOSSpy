@@ -286,6 +286,7 @@ class Matrix:
         return self.x == other.x and self.y == other.y and self.z == other.z
     def __mul__(self, other):
         if isinstance(other, Vector):
+            # column-vector multiplication: v_out = self @ other
             return Vector(
                 self.x.x * other.x + self.y.x * other.y + self.z.x * other.z,
                 self.x.y * other.x + self.y.y * other.y + self.z.y * other.z,
@@ -293,6 +294,8 @@ class Matrix:
             )
 
         if isinstance(other, Matrix):
+            # column-wise matrix product:
+            # (self @ other) columns = self @ each column of other
             return Matrix(
                 self * other.x,
                 self * other.y,
