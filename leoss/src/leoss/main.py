@@ -540,7 +540,39 @@ class Quaternion:
         return self
 
     def conjugate(self):
+        '''
+        Returns the quaternion conjugate.
+
+        For q = (w, x, y, z):
+            q* = (w, -x, -y, -z)
+
+        For unit quaternions:
+            q* = q^{-1}
+        '''
         return Quaternion(self.w, -self.x, -self.y, -self.z)
+    def inverse(self):
+        '''
+        Returns the quaternion inverse.
+
+        General case:
+            q^{-1} = q* / |q|^2
+
+        For unit quaternions (rotation quaternions):
+            q^{-1} = q*
+
+        Notes:
+            - Raises ZeroDivisionError if quaternion has zero magnitude.
+        '''
+        mag2 = self.mag2()
+        if mag2 == 0.0:
+            raise ZeroDivisionError("Cannot invert zero quaternion")
+
+        return Quaternion(
+            self.w / mag2,
+            -self.x / mag2,
+            -self.y / mag2,
+            -self.z / mag2,
+        )
     def add(self, other):
         '''
         adds another quaternion
