@@ -183,18 +183,18 @@ class Vector:
         The results overwrite the existing vector.
 
         Definition:
-            Let q_BA represent the rotation from frame A → frame B.
+            Let q_AB represent the rotation from frame A → frame B.
 
         Then this operation assumes:
             - the current vector is expressed in frame A
             - the result will be expressed in frame B
 
         Mathematically:
-            v_B = q_BA^{-1} ⊗ v_A ⊗ q_BA
+            v_B = q_AB^{-1} ⊗ v_A ⊗ q_AB
 
         Equivalent to:
             v_B = T_BA @ v_A
-            where T_BA is the transformation matrix corresponding to q_BA
+            where T_BA is the transformation matrix corresponding to q_AB
 
         Notes:
             - This is a passive transformation (change of coordinates),
@@ -385,13 +385,13 @@ class Matrix:
             self.x, self.y, self.z are COLUMN vectors
 
         Definition:
-            Let q_BA represent the rotation from frame A -> frame B.
+            Let q_AB represent the rotation from frame A -> frame B.
 
         Then:
-            v_B = R_BA @ v_A
+            v_B = T_BA @ v_A
 
         Equivalent quaternion form:
-            v_B = q_BA^{-1} ⊗ v_A ⊗ q_BA
+            v_B = q_AB^{-1} ⊗ v_A ⊗ q_AB
         '''
         if not isinstance(q, Quaternion) or abs(q.mag2() - 1.0) > ZERO:
             raise TypeError("Operand must be a unit Quaternion")
@@ -658,14 +658,50 @@ class Quaternion:
         if not isinstance(other, Quaternion):
             raise TypeError("Operand must be a Quaternion")
         return self.x*other.x + self.y*other.y + self.z*other.z + self.w*other.w
-    def diff(self, other):
+    def diff(self, reference):
         '''
-        quaternion difference or error 
-        solves for qOut in qSelf = qInput ​⊗ qOut
+        Returns the quaternion difference (relative rotation) between
+        a reference orientation and the current orientation.
+
+        Convention:
+            Quaternions are written as:
+                q_AB : transforms coordinates from frame A → frame B
+
+            Vector transformation:
+                v_B = q_AB^{-1} ⊗ v_A ⊗ q_AB
+
+        Definition:
+            Let:
+                q_AC = current orientation   (self)
+                q_AB = reference orientation
+
+            Then the relative rotation from frame B → frame C is:
+
+                q_BC = q_AB^{-1} ⊗ q_AC
+
+        such that:
+            q_AC = q_AB ⊗ q_BC
+
+        Interpretation:
+            q_BC is the rotation that takes you from the reference frame B
+            to the current frame C.
+
+            In other words:
+                A → B → C
+
+        Usage:
+            - attitude error in control systems
+            - relative rotation between two orientations
+            - error-state EKF formulations
+
+        Notes:
+            - Result is normalized.
+            - Quaternion multiplication is not commutative; order matters.
         '''
-        if not isinstance(other, Quaternion):
+        if not isinstance(reference, Quaternion):
             raise TypeError("Operand must be a Quaternion")
-        return (other.conjugate() * self).normalize()
+
+        return (reference.conjugate() * self).normalize()
     def diff2(self, other):
         '''
         quaternion difference or error 
