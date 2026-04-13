@@ -735,7 +735,7 @@ class Quaternion:
         return self
     def angleTo(self, other):
         '''
-        qngle between this quaternion and the other one
+        angle between this quaternion and the other one
         '''
         if not isinstance(other, Quaternion):
             raise TypeError("Operand must be a Quaternion")
@@ -746,10 +746,27 @@ class Quaternion:
 
     def rotate(self, v):
         '''
-        returns the rotated vector (new) by this quaternion
-            v' = q ⊗ (0, v) ⊗ q*
-        uses a slightly faster implementation
-            v' = v + 2qv × ( qv ​× v + qw v)
+        Applies a quaternion as a PASSIVE rotation (frame transformation).
+        The results overwrite the existing vector.
+
+        Definition:
+            Let q_AB represent the rotation from frame A → frame B.
+
+        Then this operation assumes:
+            - the current vector is expressed in frame A
+            - the result will be expressed in frame B
+
+        Mathematically:
+            v_B = q_AB^{-1} ⊗ v_A ⊗ q_AB
+
+        Equivalent to:
+            v_B = T_BA @ v_A
+            where T_BA is the transformation matrix corresponding to q_AB
+
+        Notes:
+            - This is a passive transformation (change of coordinates),
+            not an active rotation of a physical vector.
+            - q must be a unit quaternion.
         '''
         if not isinstance(v, Vector):
             raise TypeError("Operand must be a Vector")
@@ -773,9 +790,9 @@ class Quaternion:
 
         # v' = v + qw * t + (qv x t)
         return Vector(
-            vx + qw * tx + (qy * tz - qz * ty),
-            vy + qw * ty + (qz * tx - qx * tz),
-            vz + qw * tz + (qx * ty - qy * tx),
+            vx - qw * tx + (qy * tz - qz * ty),
+            vy - qw * ty + (qz * tx - qx * tz),
+            vz - qw * tz + (qx * ty - qy * tx),
         )
     def setFromAxisAngle(self, axis: Vector, angle):
         '''
@@ -855,18 +872,17 @@ class Quaternion:
         BxBy = 0.25*( C.yx+C.xy )
 
         b = [math.sqrt(item) for item in B]
-        Q = Quaternion()
 
         if B[0] == max(B):
-            Q.set(b[0], BwBx/b[0], BwBy/b[0], BwBz/b[0])
+            self.set(b[0], BwBx/b[0], BwBy/b[0], BwBz/b[0])
         if B[1] == max(B):
-            Q.set(BwBx/b[1], b[1], BxBy/b[1], BzBx/b[1])
+            self.set(BwBx/b[1], b[1], BxBy/b[1], BzBx/b[1])
         if B[2] == max(B):
-            Q.set(BwBy/b[2], BxBy/b[2], b[2], ByBz/b[2])
+            self.set(BwBy/b[2], BxBy/b[2], b[2], ByBz/b[2])
         if B[3] == max(B):
-            Q.set(BwBz/b[3], BzBx/b[3], ByBz/b[3], b[3])
+            self.set(BwBz/b[3], BzBx/b[3], ByBz/b[3], b[3])
 
-        return Q.conjugate()
+        return self.normalize()
 
     magnitude = mag
     __str__ = __repr__
