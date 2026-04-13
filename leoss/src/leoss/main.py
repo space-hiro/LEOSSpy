@@ -796,18 +796,46 @@ class Quaternion:
         )
     def setFromAxisAngle(self, axis: Vector, angle):
         '''
-        sets this quaternion for given axis and angle
+        Sets this quaternion from a unit rotation axis and rotation angle.
+
+        Convention:
+            - Quaternion components are stored as (w, x, y, z)
+            - The quaternion is constructed as:
+
+                q = [ cos(angle/2), axis * sin(angle/2) ]
+
+            - Under this library's convention, quaternion application is:
+
+                v_B = q_AB^{-1} ⊗ v_A ⊗ q_AB
+
+        Parameters:
+            axis:
+                Unit rotation axis.
+            angle:
+                Rotation angle in radians.
+
+        Notes:
+            - axis must be a unit vector.
+            - The resulting quaternion is unit length up to floating-point error.
         '''
         if not isinstance(axis, Vector):
             raise TypeError("Axis must be a Vector")
-        if axis.mag2() - 1 > ZERO:
+
+        mag2 = axis.mag2()
+        if mag2 <= ZERO:
+            raise ValueError("Axis must be non-zero")
+
+        if abs(mag2 - 1.0) > ZERO:
             raise ValueError("Axis must be a unit Vector")
-        half = angle*0.5
+
+        half = 0.5 * angle
         s = math.sin(half)
+
         self.w = math.cos(half)
         self.x = axis.x * s
         self.y = axis.y * s
         self.z = axis.z * s
+
         return self
     def setFromEuler(self, euler):
         '''
