@@ -385,13 +385,13 @@ class Matrix:
             self.x, self.y, self.z are COLUMN vectors
 
         Definition:
-            Let q_AB represent the rotation from frame A -> frame B.
+            Let q_BA represent the rotation from frame A -> frame B.
 
         Then:
             v_B = T_BA @ v_A
 
         Equivalent quaternion form:
-            v_B = q_AB^{-1} ⊗ v_A ⊗ q_AB
+            v_B = q_BA ⊗ v_A ⊗ q_BA^{-1}
         '''
         if not isinstance(q, Quaternion) or abs(q.mag2() - 1.0) > ZERO:
             raise TypeError("Operand must be a unit Quaternion")
