@@ -183,18 +183,18 @@ class Vector:
         The results overwrite the existing vector.
 
         Definition:
-            Let q_AB represent the rotation from frame A → frame B.
+            Let q_BA represent the rotation from frame A → frame B.
 
         Then this operation assumes:
             - the current vector is expressed in frame A
             - the result will be expressed in frame B
 
         Mathematically:
-            v_B = q_AB^{-1} ⊗ v_A ⊗ q_AB
+            v_B = q_BA ⊗ v_A ⊗ q_BA^{-1}
 
         Equivalent to:
             v_B = T_BA @ v_A
-            where T_BA is the transformation matrix corresponding to q_AB
+            where T_BA is the transformation matrix corresponding to q_BA
 
         Notes:
             - This is a passive transformation (change of coordinates),
