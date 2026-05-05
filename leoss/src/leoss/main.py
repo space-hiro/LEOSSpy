@@ -1304,7 +1304,8 @@ class Spacecraft:
         dstate.vel.copy(self.netFORCE).scale(1/state.mass)
         
         omega_q = Quaternion(0.0, state.omega.x, state.omega.y, state.omega.z)
-        dstate.quat.copy(state.quat).mul(omega_q).scale(0.5)
+        dstate.quat.copy(omega_q).mul(state.quat).scale(0.5)
+        # dstate.quat.copy(state.quat).mul(omega_q).scale(0.5)
 
         dstate.omega.copy(self.inertia.inverse()*(self.netTORQUE-state.omega.cross(self.netMOMENTUM)))
     
