@@ -913,7 +913,7 @@ class Quaternion:
         if B[3] == max(B):
             self.set(BwBz/b[3], BzBx/b[3], ByBz/b[3], b[3])
 
-        return self.normalize().conjugate()
+        return self.normalize()
 
     magnitude = mag
     vector = vec
