@@ -480,7 +480,7 @@ class Quaternion:
             Quaternions represent PASSIVE frame transformations.
 
             Let q_BA represent the rotation from frame A -> frame B, so that:
-                v_B = q_BA^{-1} ⊗ v_A ⊗ q_BA
+                v_B = q_BA ⊗ v_A ⊗ q_BA^{-1}
 
         Composition:
             If q_BA transforms A -> B
@@ -500,9 +500,9 @@ class Quaternion:
         if isinstance(other, Quaternion):
             return Quaternion(
                 self.w*other.w - self.x*other.x - self.y*other.y - self.z*other.z,
-                self.w*other.x + self.x*other.w + self.y*other.z - self.z*other.y,
-                self.w*other.y - self.x*other.z + self.y*other.w + self.z*other.x,
-                self.w*other.z + self.x*other.y - self.y*other.x + self.z*other.w
+                self.x*other.w + self.w*other.x + self.z*other.y - self.y*other.z,
+                self.y*other.w - self.z*other.x + self.w*other.y + self.x*other.z,
+                self.z*other.w + self.y*other.x - self.x*other.y + self.w*other.z
             )
         if isinstance(other, (int, float)):
             return Quaternion(
@@ -642,13 +642,15 @@ class Quaternion:
         if not isinstance(other, Quaternion):
             raise TypeError("Operand must be a Quaternion")
         w = self.w*other.w - self.x*other.x - self.y*other.y - self.z*other.z
-        x = self.w*other.x + self.x*other.w + self.y*other.z - self.z*other.y
-        y = self.w*other.y - self.x*other.z + self.y*other.w + self.z*other.x
-        z = self.w*other.z + self.x*other.y - self.y*other.x + self.z*other.w
+        x = self.x*other.w + self.w*other.x + self.z*other.y - self.y*other.z
+        y = self.y*other.w - self.z*other.x + self.w*other.y + self.x*other.z
+        z = self.z*other.w + self.y*other.x - self.x*other.y + self.w*other.z
+
         self.w = w
         self.x = x
         self.y = y
         self.z = z
+        
         return self
     def dot(self, other):
         '''
@@ -743,6 +745,7 @@ class Quaternion:
 
     def mag2(self): return self.w*self.w + self.x*self.x + self.y*self.y + self.z*self.z
     def mag(self): return math.sqrt(self.mag2())
+    def vec(self): return Vector(self.x, self.y, self.z)
 
     def rotate(self, v):
         '''
@@ -806,7 +809,7 @@ class Quaternion:
 
             - Under this library's convention, quaternion application is:
 
-                v_B = q_AB^{-1} ⊗ v_A ⊗ q_AB
+                v_B = q_BA ⊗ v_A ⊗ q_BA^{-1}
 
         Parameters:
             axis:
@@ -910,9 +913,10 @@ class Quaternion:
         if B[3] == max(B):
             self.set(BwBz/b[3], BzBx/b[3], ByBz/b[3], b[3])
 
-        return self.normalize()
+        return self.normalize().conjugate()
 
     magnitude = mag
+    vector = vec
     __str__ = __repr__
 
 class Euler:
