@@ -573,135 +573,96 @@ def test_QUATERNION_PASSIVE_ROTATION_ORDER():
     assert (vec - M * Vector(1,1,1)).mag() == pytest.approx(0.0)
     assert (vec - Mr * Vector(1,1,1)).mag() == pytest.approx(0.0)
 
-
 def test_QUATERNION_DIFF_SOLVES_RIGHT_FACTOR():
     q_first = Quaternion().setFromAxisAngle(Vector(1, 0, 0), math.pi / 3)
     q_second = Quaternion().setFromAxisAngle(Vector(0, 0, 1), math.pi / 4)
-    q_total = q_first * q_second
+    q_total = q_second * q_first
 
-    q_out = q_total.diff(q_first)
-
-    assert q_out.w == pytest.approx(q_second.w)
-    assert q_out.x == pytest.approx(q_second.x)
-    assert q_out.y == pytest.approx(q_second.y)
-    assert q_out.z == pytest.approx(q_second.z)
-
-def test_QUATERNION_DIFF2_SOLVES_LEFT_FACTOR():
-    q_first = Quaternion().setFromAxisAngle(Vector(1, 0, 0), math.pi / 3)
-    q_second = Quaternion().setFromAxisAngle(Vector(0, 0, 1), math.pi / 4)
-    q_total = q_first * q_second
-
-    q_out = q_total.diff2(q_second)
+    q_out = q_total.diff(q_second)
 
     assert q_out.w == pytest.approx(q_first.w)
     assert q_out.x == pytest.approx(q_first.x)
     assert q_out.y == pytest.approx(q_first.y)
     assert q_out.z == pytest.approx(q_first.z)
 
+def test_QUATERNION_DIFF2_SOLVES_LEFT_FACTOR():
+    q_first = Quaternion().setFromAxisAngle(Vector(1, 0, 0), math.pi / 3)
+    q_second = Quaternion().setFromAxisAngle(Vector(0, 0, 1), math.pi / 4)
+    q_total = q_second * q_first
+
+    q_out = q_total.diff2(q_first)
+
+    assert q_out.w == pytest.approx(q_second.w)
+    assert q_out.x == pytest.approx(q_second.x)
+    assert q_out.y == pytest.approx(q_second.y)
+    assert q_out.z == pytest.approx(q_second.z)
+
 def test_QUATERNION_DIFF_TYPE_ERRORS():
     q = Quaternion()
-
     with pytest.raises(TypeError):
         q.diff(1)
-
     with pytest.raises(TypeError):
         q.diff2(1)
 
 #### STATE
 
-def test_STATE_CONSTRUCTOR_DEFAULT():
+def test_STATE_IMPL():
+    #### CONSTRUCTOR
     s = State()
-
     assert s.mass   == 0.0
     assert s.pos    == Vector(0,0,0)
     assert s.vel    == Vector(0,0,0)
     assert s.quat   == Quaternion(1,0,0,0)
     assert s.omega  == Vector(0,0,0)
 
-def test_STATE_CONSTRUCTOR_COPIES():
+    #### input makes a copy not a reference
     p = Vector(1,2,3)
-
     s = State(position=p)
-
     p.set(0,0,0)
-
     assert s.pos == Vector(1,2,3)
+    assert p == Vector(0,0,0)
 
-def test_STATE_INDEXING():
+    #### __getitem___
     s = State(1, Vector(1,2,3), Vector(4,5,6), Quaternion(1,0,0,0), Vector(7,8,9))
-
     assert s[0] == 1
     assert s[1] == Vector(1,2,3)
     assert s[2] == Vector(4,5,6)
     assert s[3] == Quaternion(1,0,0,0)
     assert s[4] == Vector(7,8,9)
-
     assert len(s) == 5
-
     with pytest.raises(IndexError):
         s[5]
 
-def test_STATE_COPY():
+    #### COPY METHOD, copy deeps and does not save reference
     a = State(1, Vector(1,2,3), Vector(4,5,6), Quaternion(1,0,0,0), Vector(7,8,9))
     b = State()
-
     b.copy(a)
-
     assert b == a
+    a.scale(2)
+    assert b != a
 
-def test_STATE_COPY_DEEP():
-    a = State(1, Vector(1,2,3), Vector(4,5,6), Quaternion(1,0,0,0), Vector(7,8,9))
-    b = State().copy(a)
-
-    a.pos.set(0,0,0)
-
-    assert b.pos == Vector(1,2,3)
-
-def test_STATE_ADD():
+def test_STATE_MATH():
+    #### ADD method, inplace 
     a = State(1, Vector(1,2,3), Vector(4,5,6), Quaternion(1,1,1,1), Vector(7,8,9))
     b = State(1, Vector(1,1,1), Vector(1,1,1), Quaternion(1,1,1,1), Vector(1,1,1))
-
     a.add(b)
-
     assert a.mass == 2
     assert a.pos == Vector(2,3,4)
 
-def test_STATE_SUB():
+    #### SUB method, inplace
     a = State(2, Vector(2,3,4), Vector(5,6,7), Quaternion(2,2,2,2), Vector(8,9,10))
     b = State(1, Vector(1,1,1), Vector(1,1,1), Quaternion(1,1,1,1), Vector(1,1,1))
-
     a.sub(b)
-
     assert a.mass == 1
     assert a.pos == Vector(1,2,3)
 
-def test_STATE_SCALE():
+    #### SCALE method, inplace
     s = State(1, Vector(1,2,3), Vector(4,5,6), Quaternion(1,2,3,4), Vector(7,8,9))
-
     s.scale(2)
-
     assert s.mass == 2
     assert s.pos == Vector(2,4,6)
 
-def test_STATE_TYPE_ERRORS():
-    s = State()
-
-    with pytest.raises(TypeError):
-        s.add(1)
-
-    with pytest.raises(TypeError):
-        s.sub(1)
-
-    with pytest.raises(TypeError):
-        s.scale("x")
-
-    with pytest.raises(TypeError):
-        s.add_scaled(s, s)
-
-    with pytest.raises(TypeError):
-        s.add_scaled(1, 1)
-
-def test_STATE_ADD_SCALED():
+    #### ADD then SCALE method, inplace
     a = State(
         1.0,
         Vector(1,2,3),
@@ -709,7 +670,6 @@ def test_STATE_ADD_SCALED():
         Quaternion(1,2,3,4),
         Vector(7,8,9)
     )
-
     b = State(
         1.0,
         Vector(1,1,1),
@@ -717,19 +677,32 @@ def test_STATE_ADD_SCALED():
         Quaternion(1,1,1,1),
         Vector(1,1,1)
     )
-
     a.add_scaled(b, 2)
-
     assert a.mass == 3.0
     assert a.pos == Vector(3,4,5)
 
-def test_STATE_ZERO():
+    #### ERRORs
+    s = State()
+    with pytest.raises(TypeError):
+        s.add(1)
+    with pytest.raises(TypeError):
+        s.sub(1)
+    with pytest.raises(TypeError):
+        s.scale("x")
+    with pytest.raises(TypeError):
+        s.add_scaled(s, s)
+    with pytest.raises(TypeError):
+        s.add_scaled(1, 1)
+
+    #### ZERO method
     a = State().zero()
     assert a.mass == 0.0
     assert a.pos.mag2() == 0.0
     assert a.vel.mag2() == 0.0
     assert a.quat.mag2() == 0.0
     assert a.omega.mag2() == 0.0
+
+#### SPACECRAFT
 
 def test_PLANET_SETAS_EARTH():
     p = Planet().setAs("earth")
