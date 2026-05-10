@@ -1305,7 +1305,6 @@ class Spacecraft:
         
         omega_q = Quaternion(0.0, state.omega.x, state.omega.y, state.omega.z)
         dstate.quat.copy(omega_q).mul(state.quat).scale(0.5)
-        # dstate.quat.copy(state.quat).mul(omega_q).scale(0.5)
 
         dstate.omega.copy(self.inertia.inverse()*(self.netTORQUE-state.omega.cross(self.netMOMENTUM)))
     
@@ -1692,7 +1691,7 @@ def eci_to_orf_Matrix(pos: Vector, vel: Vector):
     Y = Vector().copy(Z.cross(vel)).normalize()
     ## x = y x z normalize
     X = Vector().copy(Y.cross(Z)).normalize()
-    return Matrix(X,Y,Z) 
+    return Matrix(X,Y,Z).transpose()
 
 #### built-in custom functions
 
@@ -1762,7 +1761,7 @@ def __geomagfield(sc: Spacecraft, st: State, time: float, args=[0]):
     C_eci_ned   = C_eci_ecef * C_ecef_ned
 
     B_ECI   = C_eci_ned * B_NED
-    B_BODY  = st.quat.conjugate().rotate(B_ECI)
+    B_BODY  = st.quat.rotate(B_ECI)
     return B_BODY
 
 def __bdotcontrol(sc: Spacecraft, st: State, time: float, args=[0]):
