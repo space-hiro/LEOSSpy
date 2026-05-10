@@ -604,6 +604,187 @@ def test_QUATERNION_DIFF_TYPE_ERRORS():
     with pytest.raises(TypeError):
         q.diff2(1)
 
+#### EULER
+
+def test_EULER_SET_FROM_QUATERNION_IDENTITY():
+    q = Quaternion(1, 0, 0, 0)
+    e = Euler(order='XYZ').setFromQuaternion(q)
+
+    assert e.x == pytest.approx(0.0)
+    assert e.y == pytest.approx(0.0)
+    assert e.z == pytest.approx(0.0)
+
+def test_EULER_SET_FROM_QUATERNION_ERROR():
+    #### INVALID Q
+    e = Euler()
+    with pytest.raises(TypeError):
+        e.setFromQuaternion(1)
+
+    #### NON UNIT Q
+    e = Euler()
+    q = Quaternion(2, 0, 0, 0)
+    with pytest.raises(ValueError):
+        e.setFromQuaternion(q)
+
+def test_EULER_QUATERNION_ROUNDTRIP():
+    e1 = Euler(0.2, -0.3, 0.4, 'ZYX')
+    q = Quaternion().setFromEuler(e1)
+    e2 = Euler(order='ZYX').setFromQuaternion(q)
+    q2 = Quaternion().setFromEuler(e2)
+
+    assert q2.w == pytest.approx(q.w, abs=1e-12)
+    assert q2.x == pytest.approx(q.x, abs=1e-12)
+    assert q2.y == pytest.approx(q.y, abs=1e-12)
+    assert q2.z == pytest.approx(q.z, abs=1e-12)
+    assert e1.x == pytest.approx(e2.x, abs=ZERO)
+    assert e1.y == pytest.approx(e2.y, abs=ZERO)
+    assert e1.z == pytest.approx(e2.z, abs=ZERO)
+
+def test_EULER_APPLY_ROTATIONS_SEQUENCE():
+    #### XYZ
+    euler   = Euler(math.pi/2, math.pi/2, math.pi/2, order='XYZ')
+    xaxis   = Vector(1, 0, 0)
+    yaxis   = Vector(0, 1, 0)
+    zaxis   = Vector(0, 0, 1)
+    x1      = Vector(1, 1, 1)
+    x2      = Vector().copy(x1)
+    x3      = Vector().copy(x1)
+
+    x1.applyQuaternion(Quaternion().setFromEuler(euler))
+
+    #### sequenced rotations
+    q  = Quaternion().setFromAxisAngle(zaxis, math.pi/2)
+    qA = Quaternion().setFromAxisAngle(yaxis, math.pi/2)
+    qB = Quaternion().setFromAxisAngle(xaxis, math.pi/2)
+    q.mul(qA).mul(qB)
+    x2.applyQuaternion(q)
+
+    x3.applyEuler(euler)
+
+    assert x1 == x2 == x3
+    assert q.diff(Quaternion().setFromEuler(euler)) == Quaternion()
+    assert q.angleTo(Quaternion().setFromEuler(euler)) == 0.0
+
+    #### XZY
+    euler   = Euler(math.pi/2, math.pi/2, math.pi/2, order='XZY')
+    xaxis   = Vector(1, 0, 0)
+    yaxis   = Vector(0, 1, 0)
+    zaxis   = Vector(0, 0, 1)
+    x1      = Vector(1, 1, 1)
+    x2      = Vector().copy(x1)
+    x3      = Vector().copy(x1)
+
+    x1.applyQuaternion(Quaternion().setFromEuler(euler))
+
+    #### sequenced rotations
+    q  = Quaternion().setFromAxisAngle(yaxis, math.pi/2)
+    qA = Quaternion().setFromAxisAngle(zaxis, math.pi/2)
+    qB = Quaternion().setFromAxisAngle(xaxis, math.pi/2)
+    q.mul(qA).mul(qB)
+    x2.applyQuaternion(q)
+
+    x3.applyEuler(euler)
+
+    assert x1 == x2 == x3
+    assert q.diff(Quaternion().setFromEuler(euler)) == Quaternion()
+    assert q.angleTo(Quaternion().setFromEuler(euler)) == 0.0
+
+    #### YXZ
+    euler   = Euler(math.pi/2, math.pi/2, math.pi/2, order='YXZ')
+    xaxis   = Vector(1, 0, 0)
+    yaxis   = Vector(0, 1, 0)
+    zaxis   = Vector(0, 0, 1)
+    x1      = Vector(1, 1, 1)
+    x2      = Vector().copy(x1)
+    x3      = Vector().copy(x1)
+
+    x1.applyQuaternion(Quaternion().setFromEuler(euler))
+
+    #### sequenced rotations
+    q  = Quaternion().setFromAxisAngle(zaxis, math.pi/2)
+    qA = Quaternion().setFromAxisAngle(xaxis, math.pi/2)
+    qB = Quaternion().setFromAxisAngle(yaxis, math.pi/2)
+    q.mul(qA).mul(qB)
+    x2.applyQuaternion(q)
+
+    x3.applyEuler(euler)
+
+    assert x1 == x2 == x3
+    assert q.diff(Quaternion().setFromEuler(euler)) == Quaternion()
+    assert q.angleTo(Quaternion().setFromEuler(euler)) == 0.0
+
+    #### YZX
+    euler   = Euler(math.pi/2, math.pi/2, math.pi/2, order='YZX')
+    xaxis   = Vector(1, 0, 0)
+    yaxis   = Vector(0, 1, 0)
+    zaxis   = Vector(0, 0, 1)
+    x1      = Vector(1, 1, 1)
+    x2      = Vector().copy(x1)
+    x3      = Vector().copy(x1)
+
+    x1.applyQuaternion(Quaternion().setFromEuler(euler))
+
+    #### sequenced rotations
+    q  = Quaternion().setFromAxisAngle(xaxis, math.pi/2)
+    qA = Quaternion().setFromAxisAngle(zaxis, math.pi/2)
+    qB = Quaternion().setFromAxisAngle(yaxis, math.pi/2)
+    q.mul(qA).mul(qB)
+    x2.applyQuaternion(q)
+
+    x3.applyEuler(euler)
+
+    assert x1 == x2 == x3
+    assert q.diff(Quaternion().setFromEuler(euler)) == Quaternion()
+    assert q.angleTo(Quaternion().setFromEuler(euler)) == 0.0
+
+    #### ZYX
+    euler   = Euler(math.pi/2, math.pi/2, math.pi/2, order='ZYX')
+    xaxis   = Vector(1, 0, 0)
+    yaxis   = Vector(0, 1, 0)
+    zaxis   = Vector(0, 0, 1)
+    x1      = Vector(1, 1, 1)
+    x2      = Vector().copy(x1)
+    x3      = Vector().copy(x1)
+
+    x1.applyQuaternion(Quaternion().setFromEuler(euler))
+
+    #### sequenced rotations
+    q  = Quaternion().setFromAxisAngle(xaxis, math.pi/2)
+    qA = Quaternion().setFromAxisAngle(yaxis, math.pi/2)
+    qB = Quaternion().setFromAxisAngle(zaxis, math.pi/2)
+    q.mul(qA).mul(qB)
+    x2.applyQuaternion(q)
+
+    x3.applyEuler(euler)
+
+    assert x1 == x2 == x3
+    assert q.diff(Quaternion().setFromEuler(euler)) == Quaternion()
+    assert q.angleTo(Quaternion().setFromEuler(euler)) == 0.0
+
+    #### ZXY
+    euler   = Euler(math.pi/2, math.pi/2, math.pi/2, order='ZXY')
+    xaxis   = Vector(1, 0, 0)
+    yaxis   = Vector(0, 1, 0)
+    zaxis   = Vector(0, 0, 1)
+    x1      = Vector(1, 1, 1)
+    x2      = Vector().copy(x1)
+    x3      = Vector().copy(x1)
+
+    x1.applyQuaternion(Quaternion().setFromEuler(euler))
+
+    #### sequenced rotations
+    q  = Quaternion().setFromAxisAngle(yaxis, math.pi/2)
+    qA = Quaternion().setFromAxisAngle(xaxis, math.pi/2)
+    qB = Quaternion().setFromAxisAngle(zaxis, math.pi/2)
+    q.mul(qA).mul(qB)
+    x2.applyQuaternion(q)
+
+    x3.applyEuler(euler)
+
+    assert x1 == x2 == x3
+    assert q.diff(Quaternion().setFromEuler(euler)) == Quaternion()
+    assert q.angleTo(Quaternion().setFromEuler(euler)) == 0.0
+
 #### STATE
 
 def test_STATE_IMPL():
@@ -702,9 +883,10 @@ def test_STATE_MATH():
     assert a.quat.mag2() == 0.0
     assert a.omega.mag2() == 0.0
 
-#### SPACECRAFT
+#### PLANET
 
-def test_PLANET_SETAS_EARTH():
+def test_PLANET_IMPL():
+    #### SETAS
     p = Planet().setAs("earth")
 
     assert p.mu == MU_EARTH_M
@@ -712,8 +894,7 @@ def test_PLANET_SETAS_EARTH():
     assert p.time == 0.0
     assert p.getSpacecrafts() == {}
 
-def test_PLANET_ADD_SPACECRAFT():
-    p = Planet().setAs("earth")
+    #### ADD SPACECRAFT
     p.addSpacecraft("SC-1")
 
     sc = p.getSpacecrafts()["SC-1"]
@@ -722,79 +903,7 @@ def test_PLANET_ADD_SPACECRAFT():
     assert sc.name == "SC-1"
     assert sc.planet is p
 
-def test_SPACECRAFT_SETTERS():
-    sc = Spacecraft("SC")
-
-    sc.setmass(10.0)
-    sc.setposition(Vector(1, 2, 3))
-    sc.setvelocity(Vector(4, 5, 6))
-    sc.setbodyrate(Vector(180, 0, 0))   # deg/s
-    sc.setquaternion(Quaternion(1, 0, 0, 0))
-
-    assert sc.state.mass == 10.0
-    assert sc.state.pos == Vector(1, 2, 3)
-    assert sc.state.vel == Vector(4, 5, 6)
-    assert sc.state.omega.x == pytest.approx(math.pi)
-    assert sc.state.omega.y == pytest.approx(0.0)
-    assert sc.state.omega.z == pytest.approx(0.0)
-    assert sc.state.quat == Quaternion(1, 0, 0, 0)
-
-def test_SPACECRAFT_SETTERS_TYPE_ERRORS():
-    sc = Spacecraft("SC")
-
-    with pytest.raises(TypeError):
-        sc.setmass("x")
-
-    with pytest.raises(TypeError):
-        sc.setposition(1)
-
-    with pytest.raises(TypeError):
-        sc.setvelocity(1)
-
-    with pytest.raises(TypeError):
-        sc.setbodyrate(1)
-
-    with pytest.raises(TypeError):
-        sc.setquaternion(1)
-
-def test_SPACECRAFT_ADD_FORCE_VALID():
-    sc = Spacecraft("SC")
-
-    def constant_force(state, time):
-        return Vector(1, 0, 0)
-
-    assert sc.addFORCE(constant_force, "F") is True
-
-def test_SPACECRAFT_ADD_FORCE_INVALID_SIGNATURE():
-    sc = Spacecraft("SC")
-
-    def bad_force(state):
-        return Vector(1, 0, 0)
-
-    assert sc.addFORCE(bad_force, "BAD") is False
-
-def test_SPACECRAFT_ADD_FORCE_INVALID_RETURN():
-    sc = Spacecraft("SC")
-
-    def bad_force(state, time):
-        return 123
-
-    assert sc.addFORCE(bad_force, "BAD") is False
-
-def test_SPACECRAFT_ADD_TORQUE_AND_MOMENTUM_VALID():
-    sc = Spacecraft("SC")
-
-    def torque(state, time):
-        return Vector(0, 1, 0)
-
-    def momentum(state, time):
-        return Vector(0, 0, 2)
-
-    assert sc.addTORQUE(torque, "T") is True
-    assert sc.addMOMENTUM(momentum, "H") is True
-
-def test_PLANET_GRAVITY_DIRECTION_AND_MAGNITUDE():
-    p = Planet().setAs("earth")
+    #### GRAVITY
     s = State(
         mass=2.0,
         position=Vector(ER_EARTH_M, 0.0, 0.0),
@@ -811,69 +920,7 @@ def test_PLANET_GRAVITY_DIRECTION_AND_MAGNITUDE():
     assert g.y == pytest.approx(0.0)
     assert g.z == pytest.approx(0.0)
 
-def test_SPACECRAFT_COMPUTE_EXTERNAL():
-    sc = Spacecraft("SC")
-    sc.state.mass = 2.0
-    sc.state.omega = Vector(1, 2, 3)
-    sc.inertia = Matrix(
-        Vector(2, 0, 0),
-        Vector(0, 3, 0),
-        Vector(0, 0, 4),
-    )
-
-    def f1(state, time):
-        return Vector(1, 0, 0)
-
-    def f2(state, time):
-        return Vector(0, 2, 0)
-
-    def t1(state, time):
-        return Vector(0, 0, 3)
-
-    def h1(state, time):
-        return Vector(4, 5, 6)
-
-    sc.addFORCE(f1, "F1")
-    sc.addFORCE(f2, "F2")
-    sc.addTORQUE(t1, "T1")
-    sc.addMOMENTUM(h1, "H1")
-
-    sc.computeEXTERNAL(sc.state, 0.0)
-
-    assert sc.netFORCE == Vector(1, 2, 0)
-    assert sc.netTORQUE == Vector(0, 0, 3)
-
-    # inertia * omega = (2, 6, 12), plus external momentum (4,5,6)
-    assert sc.netMOMENTUM == Vector(6, 11, 18)
-
-def test_SPACECRAFT_DERIVATIVE_TRANSLATION_ONLY():
-    sc = Spacecraft("SC")
-    sc.state.mass = 2.0
-    sc.inertia = Matrix()  # identity
-
-    state = State(
-        mass=2.0,
-        position=Vector(10, 20, 30),
-        velocity=Vector(1, 2, 3),
-        quaternion=Quaternion(1, 0, 0, 0),
-        bodyrate=Vector(0, 0, 0),
-    )
-    dstate = State().zero()
-
-    def force(state, time):
-        return Vector(4, 0, 0)
-
-    sc.addFORCE(force, "F")
-
-    sc.derivative(state, 0.0, dstate)
-
-    assert dstate.mass == 0.0
-    assert dstate.pos == Vector(1, 2, 3)
-    assert dstate.vel == Vector(2, 0, 0)
-    assert dstate.quat == Quaternion(0, 0, 0, 0)
-    assert dstate.omega == Vector(0, 0, 0)
-
-def test_PLANET_INIT_CREATES_RECORD():
+    #### INIT and RECORD
     p = Planet().setAs("earth")
     p.addSpacecraft("SC")
     sc = p.getSpacecrafts()["SC"]
@@ -916,6 +963,243 @@ def test_PLANET_STEP_UPDATES_TIME_AND_RECORD():
     rec = sc.getRECORD()
     assert len(rec["Time"]) == 2
     assert rec["Time"][-1] == pytest.approx(0.5)
+
+#### SPACECRAFT
+
+def test_SPACECRAFT_IMPL():
+    #### SETTERS
+    sc = Spacecraft("SC")
+
+    sc.setmass(10.0)
+    sc.setposition(Vector(1, 2, 3))
+    sc.setvelocity(Vector(4, 5, 6))
+    sc.setbodyrate(Vector(180, 0, 0))   # deg/s
+    sc.setquaternion(Quaternion(1, 0, 0, 0))
+
+    assert sc.state.mass == 10.0
+    assert sc.state.pos == Vector(1, 2, 3)
+    assert sc.state.vel == Vector(4, 5, 6)
+    assert sc.state.omega.x == pytest.approx(math.pi)
+    assert sc.state.omega.y == pytest.approx(0.0)
+    assert sc.state.omega.z == pytest.approx(0.0)
+    assert sc.state.quat == Quaternion(1, 0, 0, 0)
+
+    #### ERRORS
+
+    with pytest.raises(TypeError):
+        sc.setmass("x")
+
+    with pytest.raises(TypeError):
+        sc.setposition(1)
+
+    with pytest.raises(TypeError):
+        sc.setvelocity(1)
+
+    with pytest.raises(TypeError):
+        sc.setbodyrate(1)
+
+    with pytest.raises(TypeError):
+        sc.setquaternion(1)
+
+def test_SPACECRAFT_FUNC():
+    #### ADD TYPES
+    sc = Spacecraft("SC")
+
+    def constant_force(state, time):
+        return Vector(1, 0, 0)
+    
+    def torque(state, time):
+        return Vector(0, 1, 0)
+
+    def momentum(state, time):
+        return Vector(0, 0, 2)
+
+    assert sc.addTORQUE(torque, "T") is True
+    assert sc.addMOMENTUM(momentum, "H") is True
+    assert sc.addFORCE(constant_force, "F") is True
+
+    #### ADD FORCE INVALID ARGUMENT
+    sc = Spacecraft("SC")
+
+    def bad_force(state):
+        return Vector(1, 0, 0)
+
+    assert sc.addFORCE(bad_force, "BAD") is False
+
+    #### ADD FORCE INVALID RETURN
+    sc = Spacecraft("SC")
+
+    def bad_force(state, time):
+        return 123
+
+    assert sc.addFORCE(bad_force, "BAD") is False
+
+    #### OVERWRITE FUNC (prints)
+    sc = Spacecraft("SC")
+
+    def torque(state, time):
+        return Vector(0, 1, 0)
+
+    def momentum(state, time):
+        return Vector(0, 0, 2)
+    
+    def force(state, time):
+        return Vector(3, 0, 2)
+
+    assert sc.addFORCE(force, "F") is True
+    assert sc.addTORQUE(torque, "T") is True
+    assert sc.addMOMENTUM(momentum, "H") is True
+    assert sc.addFORCE(force, "F") is True
+    assert sc.addTORQUE(torque, "T") is True
+    assert sc.addMOMENTUM(momentum, "H") is True
+
+    #### COMPUTE
+    sc = Spacecraft("SC")
+    sc.state.mass = 2.0
+    sc.state.omega = Vector(1, 2, 3)
+    sc.inertia = Matrix(
+        Vector(2, 0, 0),
+        Vector(0, 3, 0),
+        Vector(0, 0, 4),
+    )
+
+    def f1(state, time):
+        return Vector(1, 0, 0)
+
+    def f2(state, time):
+        return Vector(0, 2, 0)
+
+    def t1(state, time):
+        return Vector(0, 0, 3)
+
+    def h1(state, time):
+        return Vector(4, 5, 6)
+
+    sc.addFORCE(f1, "F1")
+    sc.addFORCE(f2, "F2")
+    sc.addTORQUE(t1, "T1")
+    sc.addMOMENTUM(h1, "H1")
+
+    sc.computeEXTERNAL(sc.state, 0.0)
+
+    assert sc.netFORCE == Vector(1, 2, 0)
+    assert sc.netTORQUE == Vector(0, 0, 3)
+
+    # inertia * omega = (2, 6, 12), plus external momentum (4,5,6)
+    assert sc.netMOMENTUM == Vector(6, 11, 18)
+
+def test_SPACECRAFT_CUSTOM():
+    #### VALID
+    sc = Spacecraft("SC")
+
+    def constant_force(sc, state, time, args):
+        return Vector(1, 0, 0)
+
+    assert sc.addCUSTOM(constant_force, "F") is True
+
+    #### INVALID ARGUMENT
+    sc = Spacecraft("SC")
+
+    def bad_force(state):
+        return Vector(1, 0, 0)
+
+    assert sc.addCUSTOM(bad_force, "BAD") is False
+
+    #### INVALID RETURN
+    sc = Spacecraft("SC")
+
+    def bad_force(sc, state, time):
+        return ""
+
+    assert sc.addCUSTOM(bad_force, "BAD") is False
+
+    #### COMPUTE
+    sc = Spacecraft("SC")
+    sc.state.mass = 2.0
+    sc.state.omega = Vector(1, 2, 3)
+    sc.inertia = Matrix(
+        Vector(2, 0, 0),
+        Vector(0, 3, 0),
+        Vector(0, 0, 4),
+    )
+
+    def f1(sc, state, time, args):
+        return Vector(1, 2, 3)
+
+    def f2(sc, state, time, args):
+        return Vector(state.mass, time, 0)
+
+    sc.addCUSTOM(f1, "F1")
+    sc.addCUSTOM(f2, "F2")
+
+    sc.computeCUSTOM(sc.state, 0.0)
+
+    assert sc.FUNC['F1'] == Vector(1,2,3)
+    assert sc.FUNC['F2'] == Vector(sc.state.mass,0,0)
+
+def test_SPACECRAFT_DERIVATIVE_TRANSLATION_ONLY():
+    sc = Spacecraft("SC")
+    sc.state.mass = 2.0
+    sc.inertia = Matrix()  # identity
+
+    state = State(
+        mass=2.0,
+        position=Vector(10, 20, 30),
+        velocity=Vector(1, 2, 3),
+        quaternion=Quaternion(1, 0, 0, 0),
+        bodyrate=Vector(0, 0, 0),
+    )
+    dstate = State().zero()
+
+    def force(state, time):
+        return Vector(4, 0, 0)
+
+    sc.addFORCE(force, "F")
+
+    sc.derivative(state, 0.0, dstate)
+
+    assert dstate.mass == 0.0
+    assert dstate.pos == Vector(1, 2, 3)
+    assert dstate.vel == Vector(2, 0, 0)
+    assert dstate.quat == Quaternion(0, 0, 0, 0)
+    assert dstate.omega == Vector(0, 0, 0)
+
+#### SIMULATION
+
+def test_SIMULATION_LEO_CONSERVATION():
+    system = Planet().setAs('EARTH')
+    system.addSpacecraft("MULA")
+
+    spacecrafts = system.getSpacecrafts()
+
+    MULA = spacecrafts["MULA"]
+
+    MULA.setmass(155)
+    MULA.setposition(Vector(-5.18435402e+06,4.67140733e+06,-3.33373976e+02))
+    MULA.setvelocity(Vector(0.69496868e3,0.7719583e3,7.4857076e3))
+    MULA.setbodyrate(Vector(10,10,10))
+    MULA.inertia = Matrix(Vector(18.5,0.97,0.97),Vector(0.97,20.0,1.12),Vector(0.97,1.12,17.2))
+
+    simulate(system, 1000, 1/8)
+
+    assert MULA.checkConservation()
+
+def test_SIMULATION_CIRCULAR_CONSERVATION():
+    p = Planet().setAs("earth")
+    p.addSpacecraft("SC")
+    sc = p.getSpacecrafts()["SC"]
+
+    r = ER_EARTH_M + 400e3
+    v_circ = math.sqrt(p.mu / r)
+
+    sc.setmass(1.0)
+    sc.setposition(Vector(r, 0, 0))
+    sc.setvelocity(Vector(0, v_circ, 0))
+    sc.inertia = Matrix()
+
+    simulate(p, 1000, 1/4)
+
+    assert sc.checkConservation()
 
 def test_EARTH_ORBIT_SMALL_STEP_SANITY():
     p = Planet().setAs("earth")
@@ -960,41 +1244,6 @@ def test_SPACECRAFT_RECORD_LENGTHS_STAY_ALIGNED():
     for key, value in rec.items():
         assert len(value) == n, key
 
-def test_SIMULATION_LEO_CONSERVATION():
-    system = Planet().setAs('EARTH')
-    system.addSpacecraft("MULA")
-
-    spacecrafts = system.getSpacecrafts()
-
-    MULA = spacecrafts["MULA"]
-
-    MULA.setmass(155)
-    MULA.setposition(Vector(-5.18435402e+06,4.67140733e+06,-3.33373976e+02))
-    MULA.setvelocity(Vector(0.69496868e3,0.7719583e3,7.4857076e3))
-    MULA.setbodyrate(Vector(10,10,10))
-    MULA.inertia = Matrix(Vector(18.5,0.97,0.97),Vector(0.97,20.0,1.12),Vector(0.97,1.12,17.2))
-
-    simulate(system, 1000, 1/8)
-
-    assert MULA.checkConservation()
-
-def test_SIMULATION_CIRCULAR_CONSERVATION():
-    p = Planet().setAs("earth")
-    p.addSpacecraft("SC")
-    sc = p.getSpacecrafts()["SC"]
-
-    r = ER_EARTH_M + 400e3
-    v_circ = math.sqrt(p.mu / r)
-
-    sc.setmass(1.0)
-    sc.setposition(Vector(r, 0, 0))
-    sc.setvelocity(Vector(0, v_circ, 0))
-    sc.inertia = Matrix()
-
-    simulate(p, 1000, 1/4)
-
-    assert sc.checkConservation()
-
 def test_PLANET_DATETIME_BEFORE_AFTER():
     p = Planet().setAs("earth")
     p.addSpacecraft("SC")
@@ -1020,249 +1269,6 @@ def test_PLANET_DATETIME_BEFORE_AFTER():
     assert str(p.getEpochDatetime())    == "2026-01-01 12:59:59.123456"
     assert p.getCurrentUnix()           == 1767272399.123456 + 1000
     assert str(p.getCurrentDatetime())  == "2026-01-01 13:16:39.123456"
-
-def test_EULER_SET_FROM_QUATERNION_IDENTITY():
-    q = Quaternion(1, 0, 0, 0)
-    e = Euler(order='XYZ').setFromQuaternion(q)
-
-    assert e.x == pytest.approx(0.0)
-    assert e.y == pytest.approx(0.0)
-    assert e.z == pytest.approx(0.0)
-
-def test_EULER_SET_FROM_QUATERNION_TYPE_ERROR():
-    e = Euler()
-    with pytest.raises(TypeError):
-        e.setFromQuaternion(1)
-
-def test_EULER_SET_FROM_QUATERNION_NONUNIT_ERROR():
-    e = Euler()
-    q = Quaternion(2, 0, 0, 0)
-    with pytest.raises(ValueError):
-        e.setFromQuaternion(q)
-
-def test_EULER_QUATERNION_ROUNDTRIP():
-    e1 = Euler(0.2, -0.3, 0.4, 'ZYX')
-    q = Quaternion().setFromEuler(e1)
-    e2 = Euler(order='ZYX').setFromQuaternion(q)
-    q2 = Quaternion().setFromEuler(e2)
-
-    assert q2.w == pytest.approx(q.w, abs=1e-12)
-    assert q2.x == pytest.approx(q.x, abs=1e-12)
-    assert q2.y == pytest.approx(q.y, abs=1e-12)
-    assert q2.z == pytest.approx(q.z, abs=1e-12)
-
-def test_EULER_APPLY_ROTATIONS_XYZ():
-    euler   = Euler(math.pi/2, math.pi/2, math.pi/2, order='XYZ')
-    xaxis   = Vector(1, 0, 0)
-    yaxis   = Vector(0, 1, 0)
-    zaxis   = Vector(0, 0, 1)
-    x1      = Vector(1, 1, 1)
-    x2      = Vector().copy(x1)
-    x3      = Vector().copy(x1)
-
-    x1.applyQuaternion(Quaternion().setFromEuler(euler))
-
-    #### sequenced rotations
-    q  = Quaternion().setFromAxisAngle(xaxis, math.pi/2)
-    qA = Quaternion().setFromAxisAngle(yaxis, math.pi/2)
-    qB = Quaternion().setFromAxisAngle(zaxis, math.pi/2)
-    q.mul(qA).mul(qB)
-    x2.applyQuaternion(q)
-
-    x3.applyEuler(euler)
-
-    assert x1 == x2 == x3
-    assert q.diff(Quaternion().setFromEuler(euler)) == Quaternion()
-    assert q.angleTo(Quaternion().setFromEuler(euler)) == 0.0
-
-def test_EULER_APPLY_ROTATIONS_XZY():
-    euler   = Euler(math.pi/2, math.pi/2, math.pi/2, order='XZY')
-    xaxis   = Vector(1, 0, 0)
-    yaxis   = Vector(0, 1, 0)
-    zaxis   = Vector(0, 0, 1)
-    x1      = Vector(1, 1, 1)
-    x2      = Vector().copy(x1)
-    x3      = Vector().copy(x1)
-
-    x1.applyQuaternion(Quaternion().setFromEuler(euler))
-
-    #### sequenced rotations
-    q  = Quaternion().setFromAxisAngle(xaxis, math.pi/2)
-    qA = Quaternion().setFromAxisAngle(zaxis, math.pi/2)
-    qB = Quaternion().setFromAxisAngle(yaxis, math.pi/2)
-    q.mul(qA).mul(qB)
-    x2.applyQuaternion(q)
-
-    x3.applyEuler(euler)
-
-    assert x1 == x2 == x3
-    assert q.diff(Quaternion().setFromEuler(euler)) == Quaternion()
-    assert q.angleTo(Quaternion().setFromEuler(euler)) == 0.0
-
-def test_EULER_APPLY_ROTATIONS_YXZ():
-    euler   = Euler(math.pi/2, math.pi/2, math.pi/2, order='YXZ')
-    xaxis   = Vector(1, 0, 0)
-    yaxis   = Vector(0, 1, 0)
-    zaxis   = Vector(0, 0, 1)
-    x1      = Vector(1, 1, 1)
-    x2      = Vector().copy(x1)
-    x3      = Vector().copy(x1)
-
-    x1.applyQuaternion(Quaternion().setFromEuler(euler))
-
-    #### sequenced rotations
-    q  = Quaternion().setFromAxisAngle(yaxis, math.pi/2)
-    qA = Quaternion().setFromAxisAngle(xaxis, math.pi/2)
-    qB = Quaternion().setFromAxisAngle(zaxis, math.pi/2)
-    q.mul(qA).mul(qB)
-    x2.applyQuaternion(q)
-
-    x3.applyEuler(euler)
-
-    assert x1 == x2 == x3
-    assert q.diff(Quaternion().setFromEuler(euler)) == Quaternion()
-    assert q.angleTo(Quaternion().setFromEuler(euler)) == 0.0
-
-def test_EULER_APPLY_ROTATIONS_YZX():
-    euler   = Euler(math.pi/2, math.pi/2, math.pi/2, order='YZX')
-    xaxis   = Vector(1, 0, 0)
-    yaxis   = Vector(0, 1, 0)
-    zaxis   = Vector(0, 0, 1)
-    x1      = Vector(1, 1, 1)
-    x2      = Vector().copy(x1)
-    x3      = Vector().copy(x1)
-
-    x1.applyQuaternion(Quaternion().setFromEuler(euler))
-
-    #### sequenced rotations
-    q  = Quaternion().setFromAxisAngle(yaxis, math.pi/2)
-    qA = Quaternion().setFromAxisAngle(zaxis, math.pi/2)
-    qB = Quaternion().setFromAxisAngle(xaxis, math.pi/2)
-    q.mul(qA).mul(qB)
-    x2.applyQuaternion(q)
-
-    x3.applyEuler(euler)
-
-    assert x1 == x2 == x3
-    assert q.diff(Quaternion().setFromEuler(euler)) == Quaternion()
-    assert q.angleTo(Quaternion().setFromEuler(euler)) == 0.0
-
-def test_EULER_APPLY_ROTATIONS_ZYX():
-    euler   = Euler(math.pi/2, math.pi/2, math.pi/2, order='ZYX')
-    xaxis   = Vector(1, 0, 0)
-    yaxis   = Vector(0, 1, 0)
-    zaxis   = Vector(0, 0, 1)
-    x1      = Vector(1, 1, 1)
-    x2      = Vector().copy(x1)
-    x3      = Vector().copy(x1)
-
-    x1.applyQuaternion(Quaternion().setFromEuler(euler))
-
-    #### sequenced rotations
-    q  = Quaternion().setFromAxisAngle(zaxis, math.pi/2)
-    qA = Quaternion().setFromAxisAngle(yaxis, math.pi/2)
-    qB = Quaternion().setFromAxisAngle(xaxis, math.pi/2)
-    q.mul(qA).mul(qB)
-    x2.applyQuaternion(q)
-
-    x3.applyEuler(euler)
-
-    assert x1 == x2 == x3
-    assert q.diff(Quaternion().setFromEuler(euler)) == Quaternion()
-    assert q.angleTo(Quaternion().setFromEuler(euler)) == 0.0
-
-def test_EULER_APPLY_ROTATIONS_ZXY():
-    euler   = Euler(math.pi/2, math.pi/2, math.pi/2, order='ZXY')
-    xaxis   = Vector(1, 0, 0)
-    yaxis   = Vector(0, 1, 0)
-    zaxis   = Vector(0, 0, 1)
-    x1      = Vector(1, 1, 1)
-    x2      = Vector().copy(x1)
-    x3      = Vector().copy(x1)
-
-    x1.applyQuaternion(Quaternion().setFromEuler(euler))
-
-    #### sequenced rotations
-    q  = Quaternion().setFromAxisAngle(zaxis, math.pi/2)
-    qA = Quaternion().setFromAxisAngle(xaxis, math.pi/2)
-    qB = Quaternion().setFromAxisAngle(yaxis, math.pi/2)
-    q.mul(qA).mul(qB)
-    x2.applyQuaternion(q)
-
-    x3.applyEuler(euler)
-
-    assert x1 == x2 == x3
-    assert q.diff(Quaternion().setFromEuler(euler)) == Quaternion()
-    assert q.angleTo(Quaternion().setFromEuler(euler)) == 0.0
-
-def test_SPACECRAFT_ADDFUNC_OVERWRITE():
-
-    sc = Spacecraft("SC")
-
-    def torque(state, time):
-        return Vector(0, 1, 0)
-
-    def momentum(state, time):
-        return Vector(0, 0, 2)
-    
-    def force(state, time):
-        return Vector(3, 0, 2)
-
-    assert sc.addFORCE(force, "F") is True
-    assert sc.addTORQUE(torque, "T") is True
-    assert sc.addMOMENTUM(momentum, "H") is True
-    assert sc.addFORCE(force, "F") is True
-    assert sc.addTORQUE(torque, "T") is True
-    assert sc.addMOMENTUM(momentum, "H") is True
-
-def test_SPACECRAFT_ADD_CUSTOM_VALID():
-
-    sc = Spacecraft("SC")
-
-    def constant_force(sc, state, time, args):
-        return Vector(1, 0, 0)
-
-    assert sc.addCUSTOM(constant_force, "F") is True
-    
-def test_SPACECRAFT_ADD_CUSTOM_INVALID_SIGNATURE():
-    sc = Spacecraft("SC")
-
-    def bad_force(state):
-        return Vector(1, 0, 0)
-
-    assert sc.addCUSTOM(bad_force, "BAD") is False
-
-def test_SPACECRAFT_ADD_CUSTOM_INVALID_RETURN():
-    sc = Spacecraft("SC")
-
-    def bad_force(sc, state, time):
-        return ""
-
-    assert sc.addCUSTOM(bad_force, "BAD") is False
-
-def test_SPACECRAFT_COMPUTE_CUSTOM():
-    sc = Spacecraft("SC")
-    sc.state.mass = 2.0
-    sc.state.omega = Vector(1, 2, 3)
-    sc.inertia = Matrix(
-        Vector(2, 0, 0),
-        Vector(0, 3, 0),
-        Vector(0, 0, 4),
-    )
-
-    def f1(sc, state, time, args):
-        return Vector(1, 2, 3)
-
-    def f2(sc, state, time, args):
-        return Vector(state.mass, time, 0)
-
-    sc.addCUSTOM(f1, "F1")
-    sc.addCUSTOM(f2, "F2")
-
-    sc.computeCUSTOM(sc.state, 0.0)
-
-    assert sc.FUNC['F1'] == Vector(1,2,3)
-    assert sc.FUNC['F2'] == Vector(sc.state.mass,0,0)
 
 def test_SPACECRAFT_COMPUTE_METHODS_ARE_SYNC():
 
