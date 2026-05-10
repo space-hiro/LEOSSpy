@@ -1164,6 +1164,29 @@ def test_SPACECRAFT_DERIVATIVE_TRANSLATION_ONLY():
     assert dstate.quat == Quaternion(0, 0, 0, 0)
     assert dstate.omega == Vector(0, 0, 0)
 
+def test_SPACECRAFT_RECORD_LENGTHS_STAY_ALIGNED():
+    p = Planet().setAs("earth")
+    p.addSpacecraft("SC")
+    sc = p.getSpacecrafts()["SC"]
+
+    r = ER_EARTH_M + 400e3
+    v_circ = math.sqrt(p.mu / r)
+
+    sc.setmass(1.0)
+    sc.setposition(Vector(r, 0, 0))
+    sc.setvelocity(Vector(0, v_circ, 0))
+    sc.inertia = Matrix()
+
+    p.INIT()
+    p.step(1.0)
+    p.step(1.0)
+
+    rec = sc.getRECORD()
+    n = len(rec["Time"])
+
+    for key, value in rec.items():
+        assert len(value) == n
+
 #### SIMULATION
 
 def test_SIMULATION_LEO_CONSERVATION():
@@ -1220,29 +1243,6 @@ def test_EARTH_ORBIT_SMALL_STEP_SANITY():
     # After a 1-second step, still near original radius and unit quaternion norm
     assert sc.state.pos.mag() == pytest.approx(r, rel=1e-4)
     assert sc.state.quat.mag() == pytest.approx(1.0, rel=1e-12)
-
-def test_SPACECRAFT_RECORD_LENGTHS_STAY_ALIGNED():
-    p = Planet().setAs("earth")
-    p.addSpacecraft("SC")
-    sc = p.getSpacecrafts()["SC"]
-
-    r = ER_EARTH_M + 400e3
-    v_circ = math.sqrt(p.mu / r)
-
-    sc.setmass(1.0)
-    sc.setposition(Vector(r, 0, 0))
-    sc.setvelocity(Vector(0, v_circ, 0))
-    sc.inertia = Matrix()
-
-    p.INIT()
-    p.step(1.0)
-    p.step(1.0)
-
-    rec = sc.getRECORD()
-    n = len(rec["Time"])
-
-    for key, value in rec.items():
-        assert len(value) == n, key
 
 def test_PLANET_DATETIME_BEFORE_AFTER():
     p = Planet().setAs("earth")
