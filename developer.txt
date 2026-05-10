@@ -23,7 +23,7 @@ poetry new 'projectname'
 #### to update dependencies / update the dependencies as according to the pyproject.toml file.
 poetry update
 
-#### to installs the project dependencies.
+#### to install the project itself
 poetry install
 
 #### add new dependency to the project
