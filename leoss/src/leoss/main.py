@@ -1226,7 +1226,8 @@ class Spacecraft:
         "__momentumFUNC",
         "__customFUNC",
         "__customARGS",
-        "__stateRECORD"
+        "__stateRECORD",
+        "__dataFRAME"
     )
 
     def __init__(self, name):
@@ -1503,6 +1504,10 @@ class Spacecraft:
 
         return relOE < tol and relOM < tol and relRM < tol and relRE < tol
         
+    def saveRECORD(self):
+        self.__dataFRAME = pd.DataFrame.from_dict(self.getRECORD())
+        print(f"{self.name} dataframe SAVED!")
+    
     __str__ = __repr__
 
 class Planet:
@@ -1570,7 +1575,9 @@ class Planet:
             spacecraft.computeCUSTOM(spacecraft.state, self.time)
             spacecraft.computeEXTERNAL(spacecraft.state, self.time)
             spacecraft.initRECORD()
-
+    def save(self):
+        for spacecraft in self.spacecraftObjects.values():
+            spacecraft.saveRECORD()
     def gravity(self, state, time):
         rho = state.pos.mag()
         out = Vector().copy(state.pos)
@@ -1639,6 +1646,7 @@ def simulateProgress(system: Planet, timeEnd, timeStep=1/4):
     pbar.close()
 
     t1 = clock.time()
+    system.save()
     print("\nElapsed Time:\t"+str(t1-t0)+" sec.")
 
 def simulate(system: Planet, timeEnd, timeStep=1/4, init = True):
