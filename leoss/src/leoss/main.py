@@ -1213,6 +1213,7 @@ class Spacecraft:
         "size",
         "state",
         "inertia",
+        "inertia_inverse",
         "netFORCE",
         "netTORQUE",
         "netMOMENTUM",
@@ -1301,13 +1302,12 @@ class Spacecraft:
         dstate.mass  = 0
 
         dstate.pos.copy(state.vel)
-
         dstate.vel.copy(self.netFORCE).scale(1/state.mass)
         
         omega_q = Quaternion(0.0, state.omega.x, state.omega.y, state.omega.z)
         dstate.quat.copy(omega_q).mul(state.quat).scale(0.5)
 
-        dstate.omega.copy(self.inertia.inverse()*(self.netTORQUE-state.omega.cross(self.netMOMENTUM)))
+        dstate.omega.copy(self.inertia_inverse*(self.netTORQUE-state.omega.cross(self.netMOMENTUM)))
     
     def computeEXTERNAL(self, state:State, time):
         self.netFORCE.copy(self.customFORCE)
@@ -1506,8 +1506,99 @@ class Spacecraft:
         
     def saveRECORD(self):
         self.__dataFRAME = pd.DataFrame.from_dict(self.getRECORD())
-        print(f"{self.name} dataframe SAVED!")
-    
+        # print(f"{self.name} dataframe SAVED!")
+
+    def savetoTXT(self):
+        # self.__dataFRAME.to_csv(self.name+'.csv', index=False)
+        # print(f"{self.name}.csv file SAVED!")
+
+        df = self.__dataFRAME
+
+        Times       = [ item for item in df['Time'] ]
+        Positions   = [ item for item in df['Position'].values.tolist()[:] ]
+        Velocities  = [ item for item in df['Velocity'].values.tolist()[:] ]
+        Quaternions = [ item for item in df['Quaternion'].values.tolist()[:] ]
+        Bodyrates   = [ item for item in df['Bodyrate'].values.tolist()[:] ]
+        Netforce    = [ item for item in df['NetForce'].values.tolist()[:] ]
+        Nettorque   = [ item for item in df['NetTorque'].values.tolist()[:] ]
+        Netmoment   = [ item for item in df['NetMomentum'].values.tolist()[:] ]
+        SpOrbitEn   = [ item for item in df['SpecificOrbitalEnergy'] ]
+        SpAngMom    = [ item for item in df['SpecificAngularMomentum'] ]
+        BdAngMom    = [ item for item in df['BodyAngularMomentum'] ]
+        RotKinEn    = [ item for item in df['RotationalKineticEnergy'] ]
+
+        dataset = []
+        for col in df.columns[12:]:
+            if isinstance(df[col][0], (Vector, Quaternion)):
+                dataset.append( [ item for item in df[col].values.tolist()[:] ] )
+            if isinstance(df[col][0], (int, float)):
+                dataset.append( [ item for item in df[col] ] )
+
+        dt = ''.join(e for e in str(datetime.now()) if e.isalnum())
+        with open(self.name+'_'+dt+".txt", 'w') as outfile:
+
+            outfile.write( \
+                "UNIXTIME\nYEAR\nMONTH\nDAY\nHOUR\nMINUTE\nSECOND\nMICROSECOND\n" + \
+                "POSITION (X,m)\nPOSITION (Y,m)\nPOSITION (Z,m)\n" + \
+                "VELOCITY (X,m/s)\nVELOCITY (Y,m/s)\nVELOCITY (Z,m/s)\n" + \
+                "QUATERNON (W,real)\nQUATERNION (X)\nQUATERNION (Y)\nQUATERNION (Z)\n" + \
+                "BODYRATE (X,roll,rad/s)\nBODYRATE (Y,pitch,rad/s)\nBODYRATE (Z,yaw,rad/s)\n" + \
+                "NETFORCE (X,N)\nNETFORCE (Y,N)\nNETFORCE (Z,N)\n" + \
+                "NETMOMENT (X,kgm^2/s)\nNETMOMENT (Y,kgm^2/s)\nNETMOMENT (Z,kgm^2/s)\n" + \
+                "SPECIFICORBITALENERGY (m^2/s^2)\n" + \
+                "SPECIFICANGULARMOMENTUM (m^2/s)\n" + \
+                "BODYANGULARMOMENTUM (kgm^2/s)\n"  + \
+                "ROTATIONALKINETICENERGY (kgm^2/s^2)\n"
+            )
+
+            for col in df.columns[12:]:
+                if isinstance(df[col][0], Vector):
+                    outfile.write(f"{col} (X)\n{col} (Y)\n{col} (Z)\n")
+                if isinstance(df[col][0], Quaternion):
+                    outfile.write(f"{col} (W)\n{col} (X)\n{col} (Y)\n{col} (Z)\n")
+                if isinstance(df[col][0], (int, float)):
+                    outfile.write(f"{col}\n")
+
+            for i in range(0,len(df),1):
+                unixTime = self.planet.getEpoch() + Times[i]
+                unixValue = f'{int(unixTime)}'
+                dateTime = datetime.fromtimestamp(unixTime)
+                dateValue = dateTime.strftime('%Y, %m, %d, %H, %M, %S, %f')
+                positionValue = f'{Positions[i].x:.15f}, {Positions[i].y:.15f}, {Positions[i].z:.15f}'
+                velocityValue = f'{Velocities[i].x:.15f}, {Velocities[i].y:.15f}, {Velocities[i].z:.15f}'
+                quaternionValue = f'{Quaternions[i].w:.15f}, {Quaternions[i].x:.15f}, {Quaternions[i].y:.15f}, {Quaternions[i].z:.15f}'
+                bodyrateValue = f'{Bodyrates[i].x:.15f}, {Bodyrates[i].y:.15f}, {Bodyrates[i].z:.15f}'
+                netforceValue = f'{Netforce[i].x:.15f}, {Netforce[i].y:.15f}, {Netforce[i].z:.15f}'
+                nettorqueValue = f'{Nettorque[i].x:.15f}, {Nettorque[i].y:.15f}, {Nettorque[i].z:.15f}'
+                netmomentValue = f'{Netmoment[i].x:.15f}, {Netmoment[i].y:.15f}, {Netmoment[i].z:.15f}'
+                smeValue = f'{SpOrbitEn[i]:.15f}'
+                samValue = f'{SpAngMom[i]:.15f}'
+                bamValue = f'{BdAngMom[i]:.15f}'
+                rkeValue = f'{RotKinEn[i]:.15f}'
+
+                dataValues = []
+                for icol in range(0, len(df.columns[12:]), 1):
+                    if isinstance(dataset[icol][0], Vector):
+                        dataValues.append( f'{dataset[icol][i].x:.15f}, {dataset[icol][i].y:.15f}, {dataset[icol][i].z:.15f}' )
+                    if isinstance(dataset[icol][0], Quaternion):
+                        dataValues.append( f'{dataset[icol][i].w:.15f}, {dataset[icol][i].x:.15f}, {dataset[icol][i].y:.15f}, {dataset[icol][i].z:.15f}' )
+                    if isinstance(dataset[icol][0], (int, float)):
+                        dataValues.append( f'{dataset[icol][i]:.15f}' )
+
+                sep = ", "
+
+                dataline = \
+                    unixValue + sep + dateValue + sep + positionValue + sep + velocityValue + sep + quaternionValue + sep + bodyrateValue  + sep + \
+                    netforceValue + sep + nettorqueValue + sep + netmomentValue + sep + \
+                    samValue + sep + smeValue + sep + bamValue + sep + rkeValue
+                
+                for icol in range(0, len(df.columns[12:]), 1):
+                    dataline = dataline + sep + dataValues[icol]
+
+                outfile.write(dataline+'\n')
+        
+        print(f"{self.name}.txt file SAVED!")
+
     __str__ = __repr__
 
 class Planet:
@@ -1565,6 +1656,7 @@ class Planet:
 
             spacecraft.computeCUSTOM(spacecraft.state, self.time + deltaTime)
             spacecraft.computeEXTERNAL(spacecraft.state, self.time + deltaTime)
+            spacecraft.inertia_inverse = spacecraft.inertia.inverse()
             spacecraft.updateRECORD(deltaTime)
 
         self.time += deltaTime
@@ -1574,6 +1666,7 @@ class Planet:
 
             spacecraft.computeCUSTOM(spacecraft.state, self.time)
             spacecraft.computeEXTERNAL(spacecraft.state, self.time)
+            spacecraft.inertia_inverse = spacecraft.inertia.inverse()
             spacecraft.initRECORD()
     def save(self):
         for spacecraft in self.spacecraftObjects.values():
