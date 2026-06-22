@@ -1888,7 +1888,7 @@ def __bdotcontrol(sc: Spacecraft, st: State, time: float, args=[0]):
     control_moment.copy(B_dot).scale(-K)
 
     # Optional saturation to avoid absurd dipole commands
-    # m_max = 0.2  # A·m², example only
+    # m_max = 0.5  # A·m², example only
     # m_mag = control_moment.mag()
     # if m_mag > m_max and m_mag > ZERO:
     #     control_moment.scale(m_max / m_mag)
@@ -1911,3 +1911,26 @@ FUNC.geomagfield = __geomagfield
 FUNC.geomagfield.__name__ = "GeomagField"
 FUNC.bdotcontrol = __bdotcontrol
 FUNC.bdotcontrol.__name__ = "BdotControl"
+
+#### external functions
+def exportObjects(system, objects=None):
+    exported = {}
+
+    spacecrafts = system.getSpacecrafts()
+
+    for name, sc in spacecrafts.items():
+        q = [sc.state.quat.x, sc.state.quat.y, sc.state.quat.z, sc.state.quat.w]
+
+        exported[name] = {
+            "r": list(sc.state.pos),
+            "v": list(sc.state.vel),
+            "q": q,
+            "w": list(sc.state.omega),
+        }
+
+    if objects is not None:
+        objects.clear()
+        objects.update(exported)
+        return objects
+
+    return exported
